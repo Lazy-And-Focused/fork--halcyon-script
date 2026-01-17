@@ -6,6 +6,9 @@
 #include <string.h>
 #include <ctype.h>
 
+#define OPERATOR(operator, type) {operator, HCS_TOK_##type, sizeof(operator) - 1}
+#define HCS_KEYWORD(keyword, type) {#keyword, HCS_TOK_##type}
+
 /* Keyword lookup table */
 typedef struct {
     const char* keyword;
@@ -14,118 +17,215 @@ typedef struct {
 
 static KeywordEntry keywords[] = {
     /* UI Controls */
-    {"create", HCS_TOK_CREATE}, {"window", HCS_TOK_WINDOW}, {"button", HCS_TOK_BUTTON},
-    {"label", HCS_TOK_LABEL}, {"input", HCS_TOK_INPUT}, {"listbox", HCS_TOK_LISTBOX},
-    {"checkbox", HCS_TOK_CHECKBOX}, {"image", HCS_TOK_IMAGE}, {"panel", HCS_TOK_PANEL},
-    {"textarea", HCS_TOK_TEXTAREA}, {"dropdown", HCS_TOK_DROPDOWN}, {"combobox", HCS_TOK_DROPDOWN},
-    {"slider", HCS_TOK_SLIDER}, {"trackbar", HCS_TOK_SLIDER}, {"progress", HCS_TOK_PROGRESS},
-    {"progressbar", HCS_TOK_PROGRESS}, {"tab", HCS_TOK_TAB}, {"tabs", HCS_TOK_TABS},
-    {"tabcontrol", HCS_TOK_TABS}, {"menu", HCS_TOK_MENU}, {"menuitem", HCS_TOK_MENUITEM},
-    {"toolbar", HCS_TOK_TOOLBAR}, {"statusbar", HCS_TOK_STATUSBAR}, {"treeview", HCS_TOK_TREEVIEW},
-    {"tree", HCS_TOK_TREEVIEW}, {"table", HCS_TOK_TABLE}, {"grid", HCS_TOK_TABLE},
-    {"canvas", HCS_TOK_CANVAS}, {"splitter", HCS_TOK_SPLITTER}, {"tooltip", HCS_TOK_TOOLTIP},
-    {"dialog", HCS_TOK_DIALOG},
-    
+    HCS_KEYWORD(button, BUTTON),
+    HCS_KEYWORD(canvas, CANVAS),
+    HCS_KEYWORD(checkbox, CHECKBOX),
+    HCS_KEYWORD(combobox, DROPDOWN),
+    HCS_KEYWORD(create, CREATE),
+    HCS_KEYWORD(dialog, DIALOG),
+    HCS_KEYWORD(dropdown, DROPDOWN),
+    HCS_KEYWORD(grid, TABLE),
+    HCS_KEYWORD(image, IMAGE),
+    HCS_KEYWORD(input, INPUT),
+    HCS_KEYWORD(label, LABEL),
+    HCS_KEYWORD(listbox, LISTBOX),
+    HCS_KEYWORD(menu, MENU),
+    HCS_KEYWORD(menuitem, MENUITEM),
+    HCS_KEYWORD(panel, PANEL),
+    HCS_KEYWORD(progress, PROGRESS),
+    HCS_KEYWORD(progressbar, PROGRESS),
+    HCS_KEYWORD(slider, SLIDER),
+    HCS_KEYWORD(splitter, SPLITTER),
+    HCS_KEYWORD(statusbar, STATUSBAR),
+    HCS_KEYWORD(tab, TAB),
+    HCS_KEYWORD(tabcontrol, TABS),
+    HCS_KEYWORD(table, TABLE),
+    HCS_KEYWORD(tabs, TABS),
+    HCS_KEYWORD(textarea, TEXTAREA),
+    HCS_KEYWORD(toolbar, TOOLBAR),
+    HCS_KEYWORD(tooltip, TOOLTIP),
+    HCS_KEYWORD(trackbar, SLIDER),
+    HCS_KEYWORD(tree, TREEVIEW),
+    HCS_KEYWORD(treeview, TREEVIEW),
+    HCS_KEYWORD(window, WINDOW),
+
     /* Events */
-    {"when", HCS_TOK_WHEN}, {"clicked", HCS_TOK_CLICKED}, {"click", HCS_TOK_CLICKED},
-    {"changed", HCS_TOK_CHANGED}, {"change", HCS_TOK_CHANGED}, {"started", HCS_TOK_STARTED},
-    {"checked", HCS_TOK_CHECKED}, {"closed", HCS_TOK_CLOSED}, {"resized", HCS_TOK_RESIZED},
-    {"resize", HCS_TOK_RESIZED}, {"keydown", HCS_TOK_KEYDOWN}, {"keyup", HCS_TOK_KEYUP},
-    {"keypress", HCS_TOK_KEYPRESS}, {"mousemove", HCS_TOK_MOUSEMOVE},
-    {"mousedown", HCS_TOK_MOUSEDOWN}, {"mouseup", HCS_TOK_MOUSEUP},
-    {"doubleclick", HCS_TOK_DOUBLECLICK}, {"dblclick", HCS_TOK_DOUBLECLICK},
-    {"rightclick", HCS_TOK_RIGHTCLICK}, {"focus", HCS_TOK_FOCUS}, {"blur", HCS_TOK_BLUR},
-    {"scroll", HCS_TOK_SCROLL}, {"drag", HCS_TOK_DRAG}, {"drop", HCS_TOK_DROP},
-    {"timer", HCS_TOK_TIMER}, {"tick", HCS_TOK_TICK}, {"selected", HCS_TOK_SELECTED},
-    {"hover", HCS_TOK_HOVER},
-    
-    /* Actions */
-    {"show", HCS_TOK_SHOW}, {"hide", HCS_TOK_HIDE}, {"close", HCS_TOK_CLOSE},
-    {"open", HCS_TOK_OPEN}, {"minimize", HCS_TOK_MINIMIZE}, {"maximize", HCS_TOK_MAXIMIZE},
-    {"restore", HCS_TOK_RESTORE}, {"set", HCS_TOK_SET}, {"get", HCS_TOK_GET},
-    {"add", HCS_TOK_ADD}, {"remove", HCS_TOK_REMOVE}, {"clear", HCS_TOK_CLEAR},
-    {"insert", HCS_TOK_INSERT}, {"update", HCS_TOK_UPDATE}, {"enable", HCS_TOK_ENABLE},
-    {"disable", HCS_TOK_DISABLE}, {"select", HCS_TOK_SELECT}, {"deselect", HCS_TOK_DESELECT},
-    {"play", HCS_TOK_PLAY}, {"pause", HCS_TOK_PAUSE}, {"stop", HCS_TOK_STOP},
-    {"resume", HCS_TOK_RESUME}, {"seek", HCS_TOK_SEEK}, {"load", HCS_TOK_LOAD},
-    {"start", HCS_TOK_START}, {"interval", HCS_TOK_INTERVAL}, {"timeout", HCS_TOK_TIMEOUT},
-    
+    HCS_KEYWORD(blur, BLUR),
+    HCS_KEYWORD(change, CHANGED),
+    HCS_KEYWORD(changed, CHANGED),
+    HCS_KEYWORD(checked, CHECKED),
+    HCS_KEYWORD(click, CLICKED),
+    HCS_KEYWORD(clicked, CLICKED),
+    HCS_KEYWORD(closed, CLOSED),
+    HCS_KEYWORD(dblclick, DOUBLECLICK),
+    HCS_KEYWORD(doubleclick, DOUBLECLICK),
+    HCS_KEYWORD(drag, DRAG),
+    HCS_KEYWORD(drop, DROP),
+    HCS_KEYWORD(focus, FOCUS),
+    HCS_KEYWORD(hover, HOVER),
+    HCS_KEYWORD(keydown, KEYDOWN),
+    HCS_KEYWORD(keypress, KEYPRESS),
+    HCS_KEYWORD(keyup, KEYUP),
+    HCS_KEYWORD(mousedown, MOUSEDOWN),
+    HCS_KEYWORD(mousemove, MOUSEMOVE),
+    HCS_KEYWORD(mouseup, MOUSEUP),
+    HCS_KEYWORD(resize, RESIZED),
+    HCS_KEYWORD(resized, RESIZED),
+    HCS_KEYWORD(rightclick, RIGHTCLICK),
+    HCS_KEYWORD(scroll, SCROLL),
+    HCS_KEYWORD(selected, SELECTED),
+    HCS_KEYWORD(started, STARTED),
+    HCS_KEYWORD(tick, TICK),
+    HCS_KEYWORD(timer, TIMER),
+    HCS_KEYWORD(when, WHEN),
+
     /* Control flow */
-    {"if", HCS_TOK_IF}, {"else", HCS_TOK_ELSE}, {"elseif", HCS_TOK_ELSEIF},
-    {"elif", HCS_TOK_ELSEIF}, {"while", HCS_TOK_WHILE}, {"for", HCS_TOK_FOR},
-    {"from", HCS_TOK_FROM}, {"to", HCS_TOK_TO}, {"step", HCS_TOK_STEP},
-    {"break", HCS_TOK_BREAK}, {"continue", HCS_TOK_CONTINUE}, {"func", HCS_TOK_FUNC},
-    {"function", HCS_TOK_FUNC}, {"return", HCS_TOK_RETURN}, {"import", HCS_TOK_IMPORT},
-    {"export", HCS_TOK_EXPORT}, {"class", HCS_TOK_CLASS}, {"new", HCS_TOK_NEW},
-    {"this", HCS_TOK_THIS}, {"extends", HCS_TOK_EXTENDS}, {"switch", HCS_TOK_SWITCH},
-    {"case", HCS_TOK_CASE}, {"default", HCS_TOK_DEFAULT}, {"in", HCS_TOK_IN},
-    
+    HCS_KEYWORD(break, BREAK),
+    HCS_KEYWORD(case, CASE),
+    HCS_KEYWORD(class, CLASS),
+    HCS_KEYWORD(continue, CONTINUE),
+    HCS_KEYWORD(default, DEFAULT),
+    HCS_KEYWORD(elif, ELSEIF),
+    HCS_KEYWORD(else, ELSE),
+    HCS_KEYWORD(elseif, ELSEIF),
+    HCS_KEYWORD(export, EXPORT),
+    HCS_KEYWORD(extends, EXTENDS),
+    HCS_KEYWORD(for, FOR),
+    HCS_KEYWORD(from, FROM),
+    HCS_KEYWORD(func, FUNC),
+    HCS_KEYWORD(function, FUNC),
+    HCS_KEYWORD(if, IF),
+    HCS_KEYWORD(import, IMPORT),
+    HCS_KEYWORD(in, IN),
+    HCS_KEYWORD(new, NEW),
+    HCS_KEYWORD(return, RETURN),
+    HCS_KEYWORD(step, STEP),
+    HCS_KEYWORD(switch, SWITCH),
+    HCS_KEYWORD(this, THIS),
+    HCS_KEYWORD(to, TO),
+    HCS_KEYWORD(while, WHILE),
+
     /* Variables */
-    {"var", HCS_TOK_VAR}, {"const", HCS_TOK_CONST}, {"let", HCS_TOK_LET},
-    {"global", HCS_TOK_GLOBAL}, {"true", HCS_TOK_TRUE}, {"false", HCS_TOK_FALSE},
-    {"null", HCS_TOK_NULL}, {"none", HCS_TOK_NULL}, {"and", HCS_TOK_AND},
-    {"or", HCS_TOK_OR}, {"not", HCS_TOK_NOT}, {"is", HCS_TOK_IS}, {"as", HCS_TOK_AS},
-    
-    /* I/O */
-    {"print", HCS_TOK_PRINT}, {"log", HCS_TOK_LOG}, {"debug", HCS_TOK_DEBUG},
-    {"alert", HCS_TOK_ALERT}, {"confirm", HCS_TOK_CONFIRM}, {"prompt", HCS_TOK_PROMPT},
-    {"read", HCS_TOK_READ}, {"write", HCS_TOK_WRITE}, {"append", HCS_TOK_APPEND},
-    {"delete", HCS_TOK_DELETE}, {"exists", HCS_TOK_EXISTS}, {"copy", HCS_TOK_COPY},
-    {"move", HCS_TOK_MOVE}, {"mkdir", HCS_TOK_MKDIR}, {"listdir", HCS_TOK_LISTDIR},
-    {"http", HCS_TOK_HTTP}, {"fetch", HCS_TOK_FETCH}, {"request", HCS_TOK_REQUEST},
-    {"wait", HCS_TOK_WAIT}, {"async", HCS_TOK_ASYNC}, {"await", HCS_TOK_AWAIT},
-    {"parallel", HCS_TOK_PARALLEL}, {"try", HCS_TOK_TRY}, {"catch", HCS_TOK_CATCH},
-    {"throw", HCS_TOK_THROW}, {"finally", HCS_TOK_FINALLY},
-    
-    /* Data */
-    {"json", HCS_TOK_JSON}, {"parse", HCS_TOK_PARSE}, {"stringify", HCS_TOK_STRINGIFY},
-    {"encode", HCS_TOK_ENCODE}, {"decode", HCS_TOK_DECODE}, {"regex", HCS_TOK_REGEX},
-    {"match", HCS_TOK_MATCH}, {"test", HCS_TOK_TEST}, {"search", HCS_TOK_SEARCH},
-    
-    /* System */
-    {"run", HCS_TOK_RUN}, {"exec", HCS_TOK_EXEC}, {"shell", HCS_TOK_SHELL},
-    {"exit", HCS_TOK_EXIT}, {"env", HCS_TOK_ENV}, {"clipboard", HCS_TOK_CLIPBOARD},
-    {"notify", HCS_TOK_NOTIFY}, {"beep", HCS_TOK_BEEP},
-    
+    HCS_KEYWORD(and, AND),
+    HCS_KEYWORD(as, AS),
+    HCS_KEYWORD(const, CONST),
+    HCS_KEYWORD(false, FALSE),
+    HCS_KEYWORD(global, GLOBAL),
+    HCS_KEYWORD(is, IS),
+    HCS_KEYWORD(let, LET),
+    HCS_KEYWORD(none, NULL),
+    HCS_KEYWORD(not, NOT),
+    HCS_KEYWORD(null, NULL),
+    HCS_KEYWORD(or, OR),
+    HCS_KEYWORD(true, TRUE),
+    HCS_KEYWORD(var, VAR),
+
     {NULL, HCS_TOK_UNKNOWN}
 };
 
-/* Helper functions */
-static char lexer_current(HcsLexer* l) {
-    return l->position < l->length ? l->source[l->position] : '\0';
+typedef struct {
+    const char* operator;
+    HcsTokenType type;
+    size_t length;
+} OperatorEntry;
+
+static OperatorEntry operators[] = {
+    OPERATOR("++", INCREMENT),
+    OPERATOR("--", DECREMENT),
+    OPERATOR("+=", PLUS_ASSIGN),
+    OPERATOR("-=", MINUS_ASSIGN),
+    OPERATOR("->", ARROW),
+    OPERATOR("**", POWER),
+    OPERATOR("*=", MUL_ASSIGN),
+    OPERATOR("/=", DIV_ASSIGN),
+    OPERATOR("==", EQUAL),
+    OPERATOR("=>", ARROW),
+    OPERATOR("!=", NOT_EQUAL),
+    OPERATOR(">=", GREATER_EQ),
+    OPERATOR("<=", LESS_EQ),
+    OPERATOR("&&", AND),
+    OPERATOR("||", OR),
+
+    OPERATOR("+", PLUS),
+    OPERATOR("-", MINUS),
+    OPERATOR("*", MULTIPLY),
+    OPERATOR("/", DIVIDE),
+    OPERATOR("%", MODULO),
+    OPERATOR("=", ASSIGN),
+    OPERATOR("!", NOT),
+    OPERATOR(">", GREATER),
+    OPERATOR("<", LESS),
+    OPERATOR("&", UNKNOWN),
+    OPERATOR("|", UNKNOWN),
+    OPERATOR("(", LPAREN),
+    OPERATOR(")", RPAREN),
+    OPERATOR("{", LBRACE),
+    OPERATOR("}", RBRACE),
+    OPERATOR("[", LBRACKET),
+    OPERATOR("]", RBRACKET),
+    OPERATOR(",", COMMA),
+    OPERATOR(".", DOT),
+    OPERATOR(":", COLON),
+    OPERATOR(";", SEMICOLON),
+    OPERATOR("?", QUESTION),
+
+    {NULL, HCS_TOK_UNKNOWN, 0}
+};
+
+static char lexer_get_current(HcsLexer* lexer) {
+    return lexer->position < lexer->length ? lexer->source[lexer->position] : '\0';
 }
 
-static char lexer_peek(HcsLexer* l) {
-    return l->position + 1 < l->length ? l->source[l->position + 1] : '\0';
+static char lexer_get_next(HcsLexer* lexer) {
+    return lexer->position + 1 < lexer->length ? lexer->source[lexer->position + 1] : '\0';
 }
 
-static void lexer_advance(HcsLexer* l) {
-    l->position++;
-    l->column++;
+static void lexer_advance(HcsLexer* lexer) {
+    lexer->position++;
+    lexer->column++;
 }
 
-static int str_icmp(const char* a, const char* b) {
-    while (*a && *b) {
-        int ca = tolower((unsigned char)*a);
-        int cb = tolower((unsigned char)*b);
-        if (ca != cb) return ca - cb;
-        a++; b++;
+static void lexer_advance_many(HcsLexer* lexer, int count) {
+    for (int i = 0; i < count; i++) {
+        lexer->position++;
+        lexer->column++;
     }
-    return tolower((unsigned char)*a) - tolower((unsigned char)*b);
+}
+
+static int insensitive_compare(const char* str1, const char* str2) {
+    while (*str1 && *str2) {
+        int c1 = tolower((unsigned char)*str1);
+        int c2 = tolower((unsigned char)*str2);
+
+        if (c1 != c2) {
+            return c1 - c2;
+        };
+        
+        str1++; str2++;
+    }
+
+    return tolower((unsigned char)*str1) - tolower((unsigned char)*str2);
 }
 
 static HcsTokenType lookup_keyword(const char* word) {
     for (int i = 0; keywords[i].keyword != NULL; i++) {
-        if (str_icmp(word, keywords[i].keyword) == 0) {
-            return keywords[i].type;
+        KeywordEntry keyword = keywords[i];
+        bool isEquals = insensitive_compare(word, keyword.keyword) == 0;
+        if (!isEquals) {
+            continue;
         }
+
+        return keyword.type;
     }
+
     return HCS_TOK_IDENTIFIER;
 }
 
 HcsLexer* lexer_create(const char* source) {
     HcsLexer* lexer = (HcsLexer*)malloc(sizeof(HcsLexer));
-    if (!lexer) return NULL;
+    if (!lexer) {
+        return NULL;
+    }
     
     lexer->source = source;
     lexer->position = 0;
@@ -139,36 +239,43 @@ void lexer_free(HcsLexer* lexer) {
     free(lexer);
 }
 
-static void skip_whitespace_and_comments(HcsLexer* l) {
-    while (l->position < l->length) {
-        char c = lexer_current(l);
+static void skip_whitespace_and_comments(HcsLexer* lexer) {
+    while (lexer->position < lexer->length) {
+        char current = lexer_get_current(lexer);
+        char next = lexer_get_next(lexer);
         
-        if (c == ' ' || c == '\t' || c == '\r') {
-            lexer_advance(l);
+        bool isWhitespace = (current == ' ' || current == '\t' || current == '\r');
+        if (isWhitespace) {
+            lexer_advance(lexer);
             continue;
         }
         
-        /* Single-line comment // or # */
-        if ((c == '/' && lexer_peek(l) == '/') || c == '#') {
-            while (l->position < l->length && lexer_current(l) != '\n') {
-                lexer_advance(l);
+        bool isSingleLineComment = ((current == '/' && next == '/') || current == '#');
+        if (isSingleLineComment) {
+            while (lexer->position < lexer->length && lexer_get_current(lexer) != '\n') {
+                lexer_advance(lexer);
             }
             continue;
         }
         
-        /* Multi-line comment */
-        if (c == '/' && lexer_peek(l) == '*') {
-            lexer_advance(l); lexer_advance(l);
-            while (l->position < l->length) {
-                if (lexer_current(l) == '*' && lexer_peek(l) == '/') {
-                    lexer_advance(l); lexer_advance(l);
+        bool isMultiLineComment = (current == '/' && next == '*');
+        if (isMultiLineComment) {
+            lexer_advance_many(lexer, 2);
+            
+            while (lexer->position < lexer->length) {
+                bool isCommentEnd = (lexer_get_current(lexer) == '*' &&  lexer_get_next(lexer) == '/');
+                
+                if (isCommentEnd) {
+                    lexer_advance_many(lexer, 2);
                     break;
                 }
-                if (lexer_current(l) == '\n') {
-                    l->line++;
-                    l->column = 0;
+                
+                if (lexer_get_current(lexer) == '\n') {
+                    lexer->line++;
+                    lexer->column = 0;
                 }
-                lexer_advance(l);
+                
+                lexer_advance(lexer);
             }
             continue;
         }
@@ -177,170 +284,147 @@ static void skip_whitespace_and_comments(HcsLexer* l) {
     }
 }
 
-static HcsToken* read_identifier(HcsLexer* l) {
-    int start = l->position;
-    int start_col = l->column;
+static char* read_sequence(HcsLexer* lexer, int (*is_valid)(char)) {
+    int start = lexer->position;
     
-    while (l->position < l->length && 
-           (isalnum((unsigned char)lexer_current(l)) || lexer_current(l) == '_')) {
-        lexer_advance(l);
+    while (lexer->position < lexer->length && 
+           is_valid(lexer_get_current(lexer))) {
+        lexer_advance(lexer);
     }
     
-    int len = l->position - start;
-    char* value = (char*)malloc(len + 1);
-    strncpy(value, l->source + start, len);
-    value[len] = '\0';
+    int length = lexer->position - start;
+    char* sequence = (char*)malloc(length + 1);
+    if (!sequence) return NULL;
+    
+    strncpy(sequence, lexer->source + start, length);
+    sequence[length] = '\0';
+    
+    return sequence;
+}
+
+static int is_identifier_char_check(char c) {
+    return isalnum((unsigned char)c) || c == '_';
+}
+
+static int is_number_char_check(char c) {
+    return isdigit((unsigned char)c) || c == '.';
+}
+
+static HcsToken* read_identifier(HcsLexer* lexer) {
+    int start_column = lexer->column;
+    char* value = read_sequence(lexer, is_identifier_char_check);
+    if (!value) return NULL;
     
     HcsTokenType type = lookup_keyword(value);
-    HcsToken* token = token_create(type, value, l->line, start_col);
+    HcsToken* token = token_create(type, value, lexer->line, start_column);
     free(value);
+    
     return token;
 }
 
-static HcsToken* read_number(HcsLexer* l) {
-    int start = l->position;
-    int start_col = l->column;
+static HcsToken* read_number(HcsLexer* lexer) {
+    int start_column = lexer->column;
+    char* value = read_sequence(lexer, is_number_char_check);
+    if (!value) return NULL;
     
-    while (l->position < l->length && 
-           (isdigit((unsigned char)lexer_current(l)) || lexer_current(l) == '.')) {
-        lexer_advance(l);
-    }
-    
-    int len = l->position - start;
-    char* value = (char*)malloc(len + 1);
-    strncpy(value, l->source + start, len);
-    value[len] = '\0';
-    
-    HcsToken* token = token_create(HCS_TOK_NUMBER, value, l->line, start_col);
+    HcsToken* token = token_create(HCS_TOK_NUMBER, value, lexer->line, start_column);
     free(value);
+    
     return token;
 }
 
-static HcsToken* read_string(HcsLexer* l, char quote) {
-    int start_col = l->column;
-    lexer_advance(l); /* Skip opening quote */
+static HcsToken* read_string(HcsLexer* lexer, char quote) {
+    int start_column = lexer->column;
+    lexer_advance(lexer); /* Skip opening quote */
     
     char* buffer = (char*)malloc(MAX_STRING_LEN);
-    int buf_pos = 0;
+    int beffer_position = 0;
     
-    while (l->position < l->length && lexer_current(l) != quote) {
-        if (lexer_current(l) == '\\' && l->position + 1 < l->length) {
-            lexer_advance(l);
-            char escaped = lexer_current(l);
+    while (lexer->position < lexer->length && lexer_get_current(lexer) != quote) {
+        if (lexer_get_current(lexer) == '\\' && lexer->position + 1 < lexer->length) {
+            lexer_advance(lexer);
+            char escaped = lexer_get_current(lexer);
             switch (escaped) {
-                case 'n': buffer[buf_pos++] = '\n'; break;
-                case 't': buffer[buf_pos++] = '\t'; break;
-                case 'r': buffer[buf_pos++] = '\r'; break;
-                case '\\': buffer[buf_pos++] = '\\'; break;
-                case '"': buffer[buf_pos++] = '"'; break;
-                case '\'': buffer[buf_pos++] = '\''; break;
-                default: buffer[buf_pos++] = escaped; break;
+                case 'n': buffer[beffer_position++] = '\n'; break;
+                case 't': buffer[beffer_position++] = '\t'; break;
+                case 'r': buffer[beffer_position++] = '\r'; break;
+                case '\\': buffer[beffer_position++] = '\\'; break;
+                case '"': buffer[beffer_position++] = '"'; break;
+                case '\'': buffer[beffer_position++] = '\''; break;
+                default: buffer[beffer_position++] = escaped; break;
             }
         } else {
-            buffer[buf_pos++] = lexer_current(l);
+            buffer[beffer_position++] = lexer_get_current(lexer);
         }
-        lexer_advance(l);
+        lexer_advance(lexer);
     }
-    buffer[buf_pos] = '\0';
+    buffer[beffer_position] = '\0';
     
-    if (l->position < l->length) {
-        lexer_advance(l); /* Skip closing quote */
+    if (lexer->position < lexer->length) {
+        lexer_advance(lexer); /* Skip closing quote */
     }
     
-    HcsToken* token = token_create(HCS_TOK_STRING, buffer, l->line, start_col);
+    HcsToken* token = token_create(HCS_TOK_STRING, buffer, lexer->line, start_column);
     free(buffer);
     return token;
 }
 
-static HcsToken* read_operator(HcsLexer* l) {
-    int start_col = l->column;
-    char c = lexer_current(l);
-    lexer_advance(l);
+static HcsToken* read_operator(HcsLexer* lexer) {
+    int start_column = lexer->column;
+    char current = lexer_get_current(lexer);
+    char next = lexer_get_next(lexer);
     
-    switch (c) {
-        case '+':
-            if (lexer_current(l) == '+') { lexer_advance(l); return token_create(HCS_TOK_INCREMENT, "++", l->line, start_col); }
-            if (lexer_current(l) == '=') { lexer_advance(l); return token_create(HCS_TOK_PLUS_ASSIGN, "+=", l->line, start_col); }
-            return token_create(HCS_TOK_PLUS, "+", l->line, start_col);
-        case '-':
-            if (lexer_current(l) == '-') { lexer_advance(l); return token_create(HCS_TOK_DECREMENT, "--", l->line, start_col); }
-            if (lexer_current(l) == '=') { lexer_advance(l); return token_create(HCS_TOK_MINUS_ASSIGN, "-=", l->line, start_col); }
-            if (lexer_current(l) == '>') { lexer_advance(l); return token_create(HCS_TOK_ARROW, "->", l->line, start_col); }
-            return token_create(HCS_TOK_MINUS, "-", l->line, start_col);
-        case '*':
-            if (lexer_current(l) == '*') { lexer_advance(l); return token_create(HCS_TOK_POWER, "**", l->line, start_col); }
-            if (lexer_current(l) == '=') { lexer_advance(l); return token_create(HCS_TOK_MUL_ASSIGN, "*=", l->line, start_col); }
-            return token_create(HCS_TOK_MULTIPLY, "*", l->line, start_col);
-        case '/':
-            if (lexer_current(l) == '=') { lexer_advance(l); return token_create(HCS_TOK_DIV_ASSIGN, "/=", l->line, start_col); }
-            return token_create(HCS_TOK_DIVIDE, "/", l->line, start_col);
-        case '%':
-            return token_create(HCS_TOK_MODULO, "%", l->line, start_col);
-        case '=':
-            if (lexer_current(l) == '=') { lexer_advance(l); return token_create(HCS_TOK_EQUAL, "==", l->line, start_col); }
-            if (lexer_current(l) == '>') { lexer_advance(l); return token_create(HCS_TOK_ARROW, "=>", l->line, start_col); }
-            return token_create(HCS_TOK_ASSIGN, "=", l->line, start_col);
-        case '!':
-            if (lexer_current(l) == '=') { lexer_advance(l); return token_create(HCS_TOK_NOT_EQUAL, "!=", l->line, start_col); }
-            return token_create(HCS_TOK_NOT, "!", l->line, start_col);
-        case '>':
-            if (lexer_current(l) == '=') { lexer_advance(l); return token_create(HCS_TOK_GREATER_EQ, ">=", l->line, start_col); }
-            return token_create(HCS_TOK_GREATER, ">", l->line, start_col);
-        case '<':
-            if (lexer_current(l) == '=') { lexer_advance(l); return token_create(HCS_TOK_LESS_EQ, "<=", l->line, start_col); }
-            return token_create(HCS_TOK_LESS, "<", l->line, start_col);
-        case '&':
-            if (lexer_current(l) == '&') { lexer_advance(l); return token_create(HCS_TOK_AND, "&&", l->line, start_col); }
-            return token_create(HCS_TOK_UNKNOWN, "&", l->line, start_col);
-        case '|':
-            if (lexer_current(l) == '|') { lexer_advance(l); return token_create(HCS_TOK_OR, "||", l->line, start_col); }
-            return token_create(HCS_TOK_UNKNOWN, "|", l->line, start_col);
-        case '(': return token_create(HCS_TOK_LPAREN, "(", l->line, start_col);
-        case ')': return token_create(HCS_TOK_RPAREN, ")", l->line, start_col);
-        case '{': return token_create(HCS_TOK_LBRACE, "{", l->line, start_col);
-        case '}': return token_create(HCS_TOK_RBRACE, "}", l->line, start_col);
-        case '[': return token_create(HCS_TOK_LBRACKET, "[", l->line, start_col);
-        case ']': return token_create(HCS_TOK_RBRACKET, "]", l->line, start_col);
-        case ',': return token_create(HCS_TOK_COMMA, ",", l->line, start_col);
-        case '.': return token_create(HCS_TOK_DOT, ".", l->line, start_col);
-        case ':': return token_create(HCS_TOK_COLON, ":", l->line, start_col);
-        case ';': return token_create(HCS_TOK_SEMICOLON, ";", l->line, start_col);
-        case '?': return token_create(HCS_TOK_QUESTION, "?", l->line, start_col);
-        default: {
-            char buf[2] = {c, '\0'};
-            return token_create(HCS_TOK_UNKNOWN, buf, l->line, start_col);
+    for (int index = 0; operators[index].operator != NULL; index++) {
+        OperatorEntry operator = operators[index];
+
+        bool isDoubleOperator = (operator.length == 2);
+        bool isOperatorsEquals = (current == operator.operator[0] && next == operator.operator[1]);
+        if (isDoubleOperator && isOperatorsEquals) {
+            lexer_advance_many(lexer, 2);
+            return token_create(operator.type, operator.operator, lexer->line, start_column);
+        }
+
+        bool isSingleOperator = (operator.length == 1);
+        bool isOperatorEquals = (current = operator.operator[0]);
+        if (isSingleOperator && isOperatorEquals) {
+            lexer_advance(lexer);
+            return token_create(operator.type, operator.operator, lexer->line, start_column);
         }
     }
+
+    char buffer[2] = { current, '\0' };
+    lexer_advance(lexer);
+    return token_create(HCS_TOK_UNKNOWN, buffer, lexer->line, start_column);
 }
 
-HcsToken** lexer_tokenize(HcsLexer* l, int* token_count) {
+HcsToken** lexer_tokenize(HcsLexer* lexer, int* token_count) {
     HcsToken** tokens = (HcsToken**)malloc(sizeof(HcsToken*) * MAX_TOKENS);
     int count = 0;
     
-    while (l->position < l->length) {
-        skip_whitespace_and_comments(l);
-        if (l->position >= l->length) break;
+    while (lexer->position < lexer->length) {
+        skip_whitespace_and_comments(lexer);
+        if (lexer->position >= lexer->length) break;
         
-        char c = lexer_current(l);
+        char c = lexer_get_current(lexer);
         HcsToken* token = NULL;
         
         if (c == '\n') {
-            token = token_create(HCS_TOK_NEWLINE, "\\n", l->line, l->column);
-            lexer_advance(l);
-            l->line++;
-            l->column = 1;
+            token = token_create(HCS_TOK_NEWLINE, "\\n", lexer->line, lexer->column);
+            lexer_advance(lexer);
+            lexer->line++;
+            lexer->column = 1;
         }
         else if (isalpha((unsigned char)c) || c == '_') {
-            token = read_identifier(l);
+            token = read_identifier(lexer);
         }
         else if (isdigit((unsigned char)c)) {
-            token = read_number(l);
+            token = read_number(lexer);
         }
         else if (c == '"' || c == '\'') {
-            token = read_string(l, c);
+            token = read_string(lexer, c);
         }
         else {
-            token = read_operator(l);
+            token = read_operator(lexer);
         }
         
         if (token) {
@@ -349,7 +433,7 @@ HcsToken** lexer_tokenize(HcsLexer* l, int* token_count) {
         }
     }
     
-    tokens[count++] = token_create(HCS_TOK_EOF, "", l->line, l->column);
+    tokens[count++] = token_create(HCS_TOK_EOF, "", lexer->line, lexer->column);
     *token_count = count;
     return tokens;
 }
