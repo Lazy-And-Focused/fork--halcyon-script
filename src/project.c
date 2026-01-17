@@ -292,155 +292,74 @@ static bool add_include_dir(HcsProject* proj, const char* dir) {
     return true;
 }
 
-HcsProject *project_load(const char *path)
-{
-    FILE *f = fopen(path, "r");
-    if (!f)
-    {
+HcsProject* project_load(const char* path) {
+    FILE* f = fopen(path, "r");
+    if (!f) {
         fprintf(stderr, "Error: Cannot open project file: %s\n", path);
         return NULL;
     }
-
-    HcsProject *proj = project_create();
+    
+    HcsProject* proj = project_create();
+    if (!proj) {
+        fclose(f);
+        return NULL;
+    }
+    
+    free(proj->project_dir);
     proj->project_dir = get_directory(path);
-
-    char line[1024];
-    enum
-    {
-        SECTION_MAIN,
-        SECTION_FILES,
-        SECTION_INCLUDE
-    } section = SECTION_MAIN;
-
-    while (fgets(line, sizeof(line), f))
-    {
-        char *trimmed = trim(line);
-
-        /* Skip empty lines and comments */
-        if (trimmed[0] == '\0' || trimmed[0] == '#' || trimmed[0] == ';')
-        {
+    
+    char line[HCS_MAX_LINE_LEN];
+    ParserSection section = SECTION_MAIN;
+    bool error = false;
+    
+    while (fgets(line, sizeof(line), f) && !error) {
+        char* trimmed = trim(line);
+        
+        if (is_comment_or_empty(trimmed)) continue;
+        
+        if (trimmed[0] == '[') {
+            section = parse_section_header(trimmed);
             continue;
         }
-
-        /* Check for section headers */
-        if (trimmed[0] == '[')
-        {
-            if (strncmp(trimmed, "[files]", 7) == 0)
-            {
-                section = SECTION_FILES;
-            }
-            else if (strncmp(trimmed, "[include]", 9) == 0)
-            {
-                section = SECTION_INCLUDE;
-            }
-            else if (strncmp(trimmed, "[project]", 9) == 0)
-            {
-                section = SECTION_MAIN;
-            }
-            continue;
-        }
-
-        /* Parse based on section */
-        if (section == SECTION_MAIN)
-        {
-            /* Key = Value format */
-            char *eq = strchr(trimmed, '=');
-            if (eq)
-            {
-                *eq = '\0';
-                char *key = trim(trimmed);
-                char *value = trim(eq + 1);
-
-                /* Remove quotes if present */
-                if (value[0] == '"')
-                {
-                    value++;
-                    char *end_quote = strchr(value, '"');
-                    if (end_quote)
-                        *end_quote = '\0';
+        
+        switch (section) {
+            case SECTION_MAIN:
+                error = !parse_main_section_line(proj, trimmed);
+                break;
+                
+            case SECTION_FILES:
+                if (!add_project_file(proj, trimmed)) {
+                    error = true;
                 }
-
-                if (strcmp(key, "name") == 0)
-                {
-                    free(proj->name);
-                    proj->name = str_dup(value);
+                break;
+                
+            case SECTION_INCLUDE:
+                if (!add_include_dir(proj, trimmed)) {
+                    error = true;
                 }
-                else if (strcmp(key, "version") == 0)
-                {
-                    free(proj->version);
-                    proj->version = str_dup(value);
-                }
-                else if (strcmp(key, "author") == 0)
-                {
-                    free(proj->author);
-                    proj->author = str_dup(value);
-                }
-                else if (strcmp(key, "description") == 0)
-                {
-                    free(proj->description);
-                    proj->description = str_dup(value);
-                }
-                else if (strcmp(key, "entry") == 0)
-                {
-                    free(proj->entry_point);
-                    proj->entry_point = str_dup(value);
-                }
-                else if (strcmp(key, "output") == 0)
-                {
-                    free(proj->output);
-                    proj->output = str_dup(value);
-                }
-                else if (strcmp(key, "icon") == 0)
-                {
-                    free(proj->icon);
-                    proj->icon = str_dup(value);
-                }
-                else if (strcmp(key, "target") == 0)
-                {
-                    free(proj->target);
-                    proj->target = str_dup(value);
-                }
-                else if (strcmp(key, "debug") == 0)
-                {
-                    proj->debug = (strcmp(value, "true") == 0 || strcmp(value, "1") == 0);
-                }
-                else if (strcmp(key, "optimize") == 0)
-                {
-                    proj->optimize = (strcmp(value, "true") == 0 || strcmp(value, "1") == 0);
-                }
-            }
-        }
-        else if (section == SECTION_FILES)
-        {
-            /* File path */
-            if (proj->file_count < HCS_MAX_PROJECT_FILES)
-            {
-                proj->files[proj->file_count++] = str_dup(trimmed);
-            }
-        }
-        else if (section == SECTION_INCLUDE)
-        {
-            /* Include directory */
-            if (proj->include_dir_count < 32)
-            {
-                proj->include_dirs[proj->include_dir_count++] = str_dup(trimmed);
-            }
+                break;
         }
     }
-
+    
     fclose(f);
-
-    /* If no files specified, add entry point */
-    if (proj->file_count == 0 && proj->entry_point)
-    {
-        proj->files[proj->file_count++] = str_dup(proj->entry_point);
+    
+    if (error) {
+        project_free(proj);
+        return NULL;
     }
-
+    
+    // If no files specified, add entry point
+    if (proj->file_count == 0 && proj->entry_point) {
+        if (!add_project_file(proj, proj->entry_point)) {
+            project_free(proj);
+            return NULL;
+        }
+    }
+    
     printf("Loaded project: %s v%s\n", proj->name, proj->version);
     printf("  Entry: %s\n", proj->entry_point);
     printf("  Files: %d\n", proj->file_count);
-    fflush(stdout);
-
+    
     return proj;
 }
 
