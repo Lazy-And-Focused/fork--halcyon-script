@@ -1,37 +1,27 @@
-/*
- * HalcyonScript - Token implementation
- */
-
 #include "token.h"
 #include "token_names.h"
 #include <stdlib.h>
 #include <string.h>
 
 HcsToken* token_create(HcsTokenType type, const char* value, int line, int column) {
-    HcsToken* token = (HcsToken*)malloc(sizeof(HcsToken));
-    if (token == NULL) {
-        return NULL;
-    }
+    HcsToken* token = malloc(sizeof(HcsToken));
+    if (!token) return NULL;
 
     token->type = type;
     token->line = line;
     token->column = column;
+    token->value = value ? strdup(value) : NULL;
 
-    if (value != NULL) {
-        token->value = strdup(value);
-        if (token->value == NULL) {
-            free(token);
-            return NULL;
-        }
-    } else {
-        token->value = NULL;
+    if (value && !token->value) {
+        free(token);
+        return NULL;
     }
 
     return token;
 }
 
 void token_free(HcsToken* token) {
-    if (token != NULL) {
+    if (token) {
         free(token->value);
         free(token);
     }
