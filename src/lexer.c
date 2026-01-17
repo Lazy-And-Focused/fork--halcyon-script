@@ -371,44 +371,64 @@ static HcsToken* read_number(HcsLexer* lexer) {
     return token;
 }
 
+typedef struct {
+    char code;
+    char value;
+} EscapeSequence;
+
+static EscapeSequence escape_table[] = {
+    {'n', '\n'},
+    {'t', '\t'},
+    {'r', '\r'},
+    {'\\', '\\'},
+    {'"', '"'},
+    {'\'', '\''},
+    {'0', '\0'},
+    {'b', '\b'},
+    {'f', '\f'},
+    {'v', '\v'},
+    {'a', '\a'},
+    {0, 0}
+};
+
+static char resolve_escape_sequence(char code) {
+    for (int i = 0; escape_table[i].code != 0; i++) {
+        if (escape_table[i].code == code) {
+            return escape_table[i].value;
+        }
+    }
+    return code;
+}
+
 static HcsToken* read_string(HcsLexer* lexer, char quote) {
     int start_column = lexer->column;
-    lexer_advance(lexer); /* Skip opening quote */
+    lexer_advance(lexer);
     
-    char* buffer = (char*)malloc(MAX_STRING_LEN);
-    int buffer_position = 0;
+    char buffer[MAX_STRING_LEN];
+    int length = 0;
     
     while (lexer->position < lexer->length && 
            lexer_get_current(lexer) != quote &&
-           buffer_position < MAX_STRING_LEN - 1) {
+           length < MAX_STRING_LEN - 1) {
         
-        if (lexer_get_current(lexer) == ESCAPE_CHARACTER && 
-            lexer->position + 1 < lexer->length) {
+        char current = lexer_get_current(lexer);
+        if (current == ESCAPE_CHARACTER && lexer->position + 1 < lexer->length) {
             lexer_advance(lexer);
-            char escaped = lexer_get_current(lexer);
-            switch (escaped) {
-                case 'n': buffer[buffer_position++] = NEWLINE_CHARACTER; break;
-                case 't': buffer[buffer_position++] = TAB_CHARACTER; break;
-                case 'r': buffer[buffer_position++] = CARRIAGE_RETURN_CHARACTER; break;
-                case ESCAPE_CHARACTER: buffer[buffer_position++] = ESCAPE_CHARACTER; break;
-                case DOUBLE_QUOTE_CHARACTER: buffer[buffer_position++] = DOUBLE_QUOTE_CHARACTER; break;
-                case SINGLE_QUOTE_CHARACTER: buffer[buffer_position++] = SINGLE_QUOTE_CHARACTER; break;
-                default: buffer[buffer_position++] = escaped; break;
-            }
+            buffer[length++] = resolve_escape_sequence(lexer_get_current(lexer));
         } else {
-            buffer[buffer_position++] = lexer_get_current(lexer);
+            buffer[length++] = current;
         }
+        
         lexer_advance(lexer);
     }
-    buffer[buffer_position] = NULL_CHARACTER;
+    
+    buffer[length] = NULL_CHARACTER;
     
     if (lexer->position < lexer->length) {
-        lexer_advance(lexer); /* Skip closing quote */
+        lexer_advance(lexer);
     }
     
-    HcsToken* token = token_create(HCS_TOK_STRING, buffer, lexer->line, start_column);
-    free(buffer);
-    return token;
+    return token_create(HCS_TOK_STRING, buffer, lexer->line, start_column);
 }
 
 static HcsToken* read_operator(HcsLexer* lexer) {
