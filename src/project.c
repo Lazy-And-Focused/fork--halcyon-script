@@ -160,6 +160,77 @@ void project_free(HcsProject *proj)
     free(proj);
 }
 
+typedef enum {
+    SECTION_MAIN,
+    SECTION_FILES,
+    SECTION_INCLUDE
+} ParserSection;
+
+static bool parse_key_value(HcsProject* proj, const char* key, char* value) {
+    if (!key || !value) return false;
+    
+    if (strcmp(key, "name") == 0) {
+        free(proj->name);
+        proj->name = str_dup(value);
+        return proj->name != NULL;
+    }
+    if (strcmp(key, "version") == 0) {
+        free(proj->version);
+        proj->version = str_dup(value);
+        return proj->version != NULL;
+    }
+    if (strcmp(key, "author") == 0) {
+        free(proj->author);
+        proj->author = str_dup(value);
+        return true;
+    }
+    if (strcmp(key, "description") == 0) {
+        free(proj->description);
+        proj->description = str_dup(value);
+        return true;
+    }
+    if (strcmp(key, "entry") == 0) {
+        free(proj->entry_point);
+        proj->entry_point = str_dup(value);
+        return proj->entry_point != NULL;
+    }
+    if (strcmp(key, "output") == 0) {
+        free(proj->output);
+        proj->output = str_dup(value);
+        return true;
+    }
+    if (strcmp(key, "icon") == 0) {
+        free(proj->icon);
+        proj->icon = str_dup(value);
+        return true;
+    }
+    if (strcmp(key, "target") == 0) {
+        free(proj->target);
+        proj->target = str_dup(value);
+        return proj->target != NULL;
+    }
+    if (strcmp(key, "debug") == 0) {
+        proj->debug = (strcmp(value, "true") == 0 || strcmp(value, "1") == 0);
+        return true;
+    }
+    if (strcmp(key, "optimize") == 0) {
+        proj->optimize = (strcmp(value, "true") == 0 || strcmp(value, "1") == 0);
+        return true;
+    }
+    
+    return true;
+}
+
+static void remove_quotes(char* str) {
+    if (!str || str[0] != '"') return;
+    
+    size_t len = strlen(str);
+    if (len > 1 && str[len - 1] == '"') {
+        memmove(str, str + 1, len - 2);
+        str[len - 2] = '\0';
+    }
+}
+
 HcsProject *project_load(const char *path)
 {
     FILE *f = fopen(path, "r");
