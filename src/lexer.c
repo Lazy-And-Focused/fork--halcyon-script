@@ -6,6 +6,37 @@
 #include <string.h>
 #include <ctype.h>
 
+/* Configuration constants */
+#define MAX_IDENTIFIER_LENGTH    256
+#define MAX_NUMBER_LENGTH        50
+#define ESCAPE_CHARACTER         '\\'
+#define NULL_CHARACTER           '\0'
+#define NEWLINE_CHARACTER        '\n'
+#define TAB_CHARACTER            '\t'
+#define CARRIAGE_RETURN_CHARACTER '\r'
+#define SPACE_CHARACTER          ' '
+#define UNDERSCORE_CHARACTER     '_'
+#define DOT_CHARACTER            '.'
+#define SINGLE_QUOTE_CHARACTER   '\''
+#define DOUBLE_QUOTE_CHARACTER   '"'
+#define HASH_COMMENT_CHARACTER   '#'
+#define ASTERISK_CHARACTER       '*'
+#define SLASH_CHARACTER          '/'
+#define DOUBLE_SLASH_SEQUENCE    "//"
+#define MULTILINE_COMMENT_START  "/*"
+#define MULTILINE_COMMENT_END    "*/"
+
+/* Token representation constants */
+#define NEWLINE_REPRESENTATION   "\\n"
+#define END_OF_FILE_REPRESENTATION ""
+#define UNKNOWN_CHAR_BUFFER_SIZE 2
+
+/* Operator length constants */
+#define SINGLE_CHAR_OPERATOR_LENGTH 1
+#define DOUBLE_CHAR_OPERATOR_LENGTH 2
+#define OPERATOR_NOT_FOUND_LENGTH 0
+
+/* Macros for table definitions */
 #define OPERATOR(operator, type) {operator, HCS_TOK_##type, sizeof(operator) - 1}
 #define HCS_KEYWORD(keyword, type) {#keyword, HCS_TOK_##type}
 
@@ -169,15 +200,15 @@ static OperatorEntry operators[] = {
     OPERATOR(";", SEMICOLON),
     OPERATOR("?", QUESTION),
 
-    {NULL, HCS_TOK_UNKNOWN, 0}
+    {NULL, HCS_TOK_UNKNOWN, OPERATOR_NOT_FOUND_LENGTH}
 };
 
 static char lexer_get_current(HcsLexer* lexer) {
-    return lexer->position < lexer->length ? lexer->source[lexer->position] : '\0';
+    return lexer->position < lexer->length ? lexer->source[lexer->position] : NULL_CHARACTER;
 }
 
 static char lexer_get_next(HcsLexer* lexer) {
-    return lexer->position + 1 < lexer->length ? lexer->source[lexer->position + 1] : '\0';
+    return lexer->position + 1 < lexer->length ? lexer->source[lexer->position + 1] : NULL_CHARACTER;
 }
 
 static void lexer_advance(HcsLexer* lexer) {
@@ -199,7 +230,7 @@ static int insensitive_compare(const char* str1, const char* str2) {
 
         if (c1 != c2) {
             return c1 - c2;
-        };
+        }
         
         str1++; str2++;
     }
@@ -244,33 +275,37 @@ static void skip_whitespace_and_comments(HcsLexer* lexer) {
         char current = lexer_get_current(lexer);
         char next = lexer_get_next(lexer);
         
-        bool isWhitespace = (current == ' ' || current == '\t' || current == '\r');
+        bool isWhitespace = (current == SPACE_CHARACTER || 
+                             current == TAB_CHARACTER || 
+                             current == CARRIAGE_RETURN_CHARACTER);
         if (isWhitespace) {
             lexer_advance(lexer);
             continue;
         }
         
-        bool isSingleLineComment = ((current == '/' && next == '/') || current == '#');
+        bool isSingleLineComment = ((current == SLASH_CHARACTER && next == SLASH_CHARACTER) || 
+                                    current == HASH_COMMENT_CHARACTER);
         if (isSingleLineComment) {
-            while (lexer->position < lexer->length && lexer_get_current(lexer) != '\n') {
+            while (lexer->position < lexer->length && lexer_get_current(lexer) != NEWLINE_CHARACTER) {
                 lexer_advance(lexer);
             }
             continue;
         }
         
-        bool isMultiLineComment = (current == '/' && next == '*');
+        bool isMultiLineComment = (current == SLASH_CHARACTER && next == ASTERISK_CHARACTER);
         if (isMultiLineComment) {
-            lexer_advance_many(lexer, 2);
+            lexer_advance_many(lexer, DOUBLE_CHAR_OPERATOR_LENGTH);
             
             while (lexer->position < lexer->length) {
-                bool isCommentEnd = (lexer_get_current(lexer) == '*' &&  lexer_get_next(lexer) == '/');
+                bool isCommentEnd = (lexer_get_current(lexer) == ASTERISK_CHARACTER &&  
+                                     lexer_get_next(lexer) == SLASH_CHARACTER);
                 
                 if (isCommentEnd) {
-                    lexer_advance_many(lexer, 2);
+                    lexer_advance_many(lexer, DOUBLE_CHAR_OPERATOR_LENGTH);
                     break;
                 }
                 
-                if (lexer_get_current(lexer) == '\n') {
+                if (lexer_get_current(lexer) == NEWLINE_CHARACTER) {
                     lexer->line++;
                     lexer->column = 0;
                 }
@@ -284,12 +319,15 @@ static void skip_whitespace_and_comments(HcsLexer* lexer) {
     }
 }
 
-static char* read_sequence(HcsLexer* lexer, int (*is_valid)(char)) {
+static char* read_sequence(HcsLexer* lexer, int (*is_valid)(char), int max_length) {
     int start = lexer->position;
+    int chars_read = 0;
     
     while (lexer->position < lexer->length && 
-           is_valid(lexer_get_current(lexer))) {
+           is_valid(lexer_get_current(lexer)) &&
+           chars_read < max_length) {
         lexer_advance(lexer);
+        chars_read++;
     }
     
     int length = lexer->position - start;
@@ -297,22 +335,22 @@ static char* read_sequence(HcsLexer* lexer, int (*is_valid)(char)) {
     if (!sequence) return NULL;
     
     strncpy(sequence, lexer->source + start, length);
-    sequence[length] = '\0';
+    sequence[length] = NULL_CHARACTER;
     
     return sequence;
 }
 
 static int is_identifier_char_check(char c) {
-    return isalnum((unsigned char)c) || c == '_';
+    return isalnum((unsigned char)c) || c == UNDERSCORE_CHARACTER;
 }
 
 static int is_number_char_check(char c) {
-    return isdigit((unsigned char)c) || c == '.';
+    return isdigit((unsigned char)c) || c == DOT_CHARACTER;
 }
 
 static HcsToken* read_identifier(HcsLexer* lexer) {
     int start_column = lexer->column;
-    char* value = read_sequence(lexer, is_identifier_char_check);
+    char* value = read_sequence(lexer, is_identifier_char_check, MAX_IDENTIFIER_LENGTH);
     if (!value) return NULL;
     
     HcsTokenType type = lookup_keyword(value);
@@ -324,7 +362,7 @@ static HcsToken* read_identifier(HcsLexer* lexer) {
 
 static HcsToken* read_number(HcsLexer* lexer) {
     int start_column = lexer->column;
-    char* value = read_sequence(lexer, is_number_char_check);
+    char* value = read_sequence(lexer, is_number_char_check, MAX_NUMBER_LENGTH);
     if (!value) return NULL;
     
     HcsToken* token = token_create(HCS_TOK_NUMBER, value, lexer->line, start_column);
@@ -338,27 +376,31 @@ static HcsToken* read_string(HcsLexer* lexer, char quote) {
     lexer_advance(lexer); /* Skip opening quote */
     
     char* buffer = (char*)malloc(MAX_STRING_LEN);
-    int beffer_position = 0;
+    int buffer_position = 0;
     
-    while (lexer->position < lexer->length && lexer_get_current(lexer) != quote) {
-        if (lexer_get_current(lexer) == '\\' && lexer->position + 1 < lexer->length) {
+    while (lexer->position < lexer->length && 
+           lexer_get_current(lexer) != quote &&
+           buffer_position < MAX_STRING_LEN - 1) {
+        
+        if (lexer_get_current(lexer) == ESCAPE_CHARACTER && 
+            lexer->position + 1 < lexer->length) {
             lexer_advance(lexer);
             char escaped = lexer_get_current(lexer);
             switch (escaped) {
-                case 'n': buffer[beffer_position++] = '\n'; break;
-                case 't': buffer[beffer_position++] = '\t'; break;
-                case 'r': buffer[beffer_position++] = '\r'; break;
-                case '\\': buffer[beffer_position++] = '\\'; break;
-                case '"': buffer[beffer_position++] = '"'; break;
-                case '\'': buffer[beffer_position++] = '\''; break;
-                default: buffer[beffer_position++] = escaped; break;
+                case 'n': buffer[buffer_position++] = NEWLINE_CHARACTER; break;
+                case 't': buffer[buffer_position++] = TAB_CHARACTER; break;
+                case 'r': buffer[buffer_position++] = CARRIAGE_RETURN_CHARACTER; break;
+                case ESCAPE_CHARACTER: buffer[buffer_position++] = ESCAPE_CHARACTER; break;
+                case DOUBLE_QUOTE_CHARACTER: buffer[buffer_position++] = DOUBLE_QUOTE_CHARACTER; break;
+                case SINGLE_QUOTE_CHARACTER: buffer[buffer_position++] = SINGLE_QUOTE_CHARACTER; break;
+                default: buffer[buffer_position++] = escaped; break;
             }
         } else {
-            buffer[beffer_position++] = lexer_get_current(lexer);
+            buffer[buffer_position++] = lexer_get_current(lexer);
         }
         lexer_advance(lexer);
     }
-    buffer[beffer_position] = '\0';
+    buffer[buffer_position] = NULL_CHARACTER;
     
     if (lexer->position < lexer->length) {
         lexer_advance(lexer); /* Skip closing quote */
@@ -377,22 +419,22 @@ static HcsToken* read_operator(HcsLexer* lexer) {
     for (int index = 0; operators[index].operator != NULL; index++) {
         OperatorEntry operator = operators[index];
 
-        bool isDoubleOperator = (operator.length == 2);
+        bool isDoubleOperator = (operator.length == DOUBLE_CHAR_OPERATOR_LENGTH);
         bool isOperatorsEquals = (current == operator.operator[0] && next == operator.operator[1]);
         if (isDoubleOperator && isOperatorsEquals) {
-            lexer_advance_many(lexer, 2);
+            lexer_advance_many(lexer, DOUBLE_CHAR_OPERATOR_LENGTH);
             return token_create(operator.type, operator.operator, lexer->line, start_column);
         }
 
-        bool isSingleOperator = (operator.length == 1);
-        bool isOperatorEquals = (current = operator.operator[0]);
+        bool isSingleOperator = (operator.length == SINGLE_CHAR_OPERATOR_LENGTH);
+        bool isOperatorEquals = (current == operator.operator[0]);
         if (isSingleOperator && isOperatorEquals) {
             lexer_advance(lexer);
             return token_create(operator.type, operator.operator, lexer->line, start_column);
         }
     }
 
-    char buffer[2] = { current, '\0' };
+    char buffer[UNKNOWN_CHAR_BUFFER_SIZE] = { current, NULL_CHARACTER };
     lexer_advance(lexer);
     return token_create(HCS_TOK_UNKNOWN, buffer, lexer->line, start_column);
 }
@@ -408,19 +450,19 @@ HcsToken** lexer_tokenize(HcsLexer* lexer, int* token_count) {
         char c = lexer_get_current(lexer);
         HcsToken* token = NULL;
         
-        if (c == '\n') {
-            token = token_create(HCS_TOK_NEWLINE, "\\n", lexer->line, lexer->column);
+        if (c == NEWLINE_CHARACTER) {
+            token = token_create(HCS_TOK_NEWLINE, NEWLINE_REPRESENTATION, lexer->line, lexer->column);
             lexer_advance(lexer);
             lexer->line++;
             lexer->column = 1;
         }
-        else if (isalpha((unsigned char)c) || c == '_') {
+        else if (isalpha((unsigned char)c) || c == UNDERSCORE_CHARACTER) {
             token = read_identifier(lexer);
         }
         else if (isdigit((unsigned char)c)) {
             token = read_number(lexer);
         }
-        else if (c == '"' || c == '\'') {
+        else if (c == DOUBLE_QUOTE_CHARACTER || c == SINGLE_QUOTE_CHARACTER) {
             token = read_string(lexer, c);
         }
         else {
@@ -433,7 +475,7 @@ HcsToken** lexer_tokenize(HcsLexer* lexer, int* token_count) {
         }
     }
     
-    tokens[count++] = token_create(HCS_TOK_EOF, "", lexer->line, lexer->column);
+    tokens[count++] = token_create(HCS_TOK_EOF, END_OF_FILE_REPRESENTATION, lexer->line, lexer->column);
     *token_count = count;
     return tokens;
 }
