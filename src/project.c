@@ -18,7 +18,9 @@
  * modules/
  */
 
+
 #include "project.h"
+#include "project_config.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -28,33 +30,38 @@
 #ifdef _WIN32
 #include <windows.h>
 #include <direct.h>
-#define PATH_SEP '\\'
-#define PATH_SEP_STR "\\"
 #else
 #include <unistd.h>
-#define PATH_SEP '/'
-#define PATH_SEP_STR "/"
 #endif
 
-#include "project.h"
+/* Boolean value checking */
+static const char* TRUE_VALUE_STRINGS[] = TRUE_VALUES;
+static const int NUM_TRUE_VALUES = TRUE_VALUES_COUNT;
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <ctype.h>
+static bool string_to_bool(const char* str) {
+    if (!str) return false;
+    
+    for (int i = 0; i < NUM_TRUE_VALUES; i++) {
+        if (strcasecmp(str, TRUE_VALUE_STRINGS[i]) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
 
-#ifdef _WIN32
-#include <windows.h>
-#include <direct.h>
-#define PATH_SEP '\\'
-#define PATH_SEP_STR "\\"
-#define IS_ABSOLUTE_PATH(p) ((p)[0] == '/' || ((p)[0] && (p)[1] == ':'))
-#else
-#include <unistd.h>
-#define PATH_SEP '/'
-#define PATH_SEP_STR "/"
-#define IS_ABSOLUTE_PATH(p) ((p)[0] == '/')
-#endif
+static bool is_comment_char(char c) {
+    for (int i = 0; i < COMMENT_CHARS_COUNT; i++) {
+        if (c == COMMENT_CHARS[i]) {
+            return true;
+        }
+    }
+    return false;
+}
+
+static bool is_comment_or_empty(const char* line) {
+    return line[0] == '\0' || line[0] == '#' || line[0] == ';';
+}
+
 
 typedef enum {
     SECTION_MAIN,
@@ -240,10 +247,6 @@ static ParserSection parse_section_header(const char* line) {
     if (strncmp(line, "[include]", 9) == 0) return SECTION_INCLUDE;
     if (strncmp(line, "[project]", 9) == 0) return SECTION_MAIN;
     return SECTION_MAIN;
-}
-
-static bool is_comment_or_empty(const char* line) {
-    return line[0] == '\0' || line[0] == '#' || line[0] == ';';
 }
 
 static bool parse_main_section_line(HcsProject* proj, char* line) {
