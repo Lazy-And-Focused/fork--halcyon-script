@@ -11,17 +11,20 @@ HcsToken* token_create(HcsTokenType type, const char* value, int line, int colum
     if (!token) return NULL;
     
     token->type = type;
-    token->value = value ? strdup(value) : NULL;
     token->line = line;
     token->column = column;
-    return token;
-}
-
-void token_free(HcsToken* token) {
-    if (token) {
-        free(token->value);
-        free(token);
+    
+    if (value) {
+        token->value = strdup(value);
+        if (!token->value) {
+            free(token);
+            return NULL;
+        }
+    } else {
+        token->value = NULL;
     }
+    
+    return token;
 }
 
 const char* token_type_name(HcsTokenType type) {
