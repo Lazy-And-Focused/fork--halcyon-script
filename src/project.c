@@ -235,6 +235,63 @@ static void remove_quotes(char* str) {
     }
 }
 
+static ParserSection parse_section_header(const char* line) {
+    if (strncmp(line, "[files]", 7) == 0) return SECTION_FILES;
+    if (strncmp(line, "[include]", 9) == 0) return SECTION_INCLUDE;
+    if (strncmp(line, "[project]", 9) == 0) return SECTION_MAIN;
+    return SECTION_MAIN;
+}
+
+static bool is_comment_or_empty(const char* line) {
+    return line[0] == '\0' || line[0] == '#' || line[0] == ';';
+}
+
+static bool parse_main_section_line(HcsProject* proj, char* line) {
+    char* eq = strchr(line, '=');
+    if (!eq) return true;
+    
+    *eq = '\0';
+    char* key = trim(line);
+    char* value = trim(eq + 1);
+    
+    // Remove surrounding quotes
+    if (value[0] == '"') {
+        value++;
+        char* end_quote = strchr(value, '"');
+        if (end_quote) *end_quote = '\0';
+    }
+    
+    return parse_key_value(proj, key, value);
+}
+
+static bool add_project_file(HcsProject* proj, const char* file) {
+    if (proj->file_count >= HCS_MAX_PROJECT_FILES) {
+        fprintf(stderr, "Warning: Maximum project files (%d) reached\n", 
+                HCS_MAX_PROJECT_FILES);
+        return false;
+    }
+    
+    proj->files[proj->file_count] = str_dup(file);
+    if (!proj->files[proj->file_count]) return false;
+    
+    proj->file_count++;
+    return true;
+}
+
+static bool add_include_dir(HcsProject* proj, const char* dir) {
+    if (proj->include_dir_count >= HCS_MAX_INCLUDE_DIRS) {
+        fprintf(stderr, "Warning: Maximum include directories (%d) reached\n", 
+                HCS_MAX_INCLUDE_DIRS);
+        return false;
+    }
+    
+    proj->include_dirs[proj->include_dir_count] = str_dup(dir);
+    if (!proj->include_dirs[proj->include_dir_count]) return false;
+    
+    proj->include_dir_count++;
+    return true;
+}
+
 HcsProject *project_load(const char *path)
 {
     FILE *f = fopen(path, "r");
