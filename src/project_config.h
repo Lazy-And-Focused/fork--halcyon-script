@@ -42,9 +42,11 @@
 #ifdef _WIN32
 #define PATH_SEPARATOR           '\\'
 #define PATH_SEPARATOR_STRING    "\\"
+#define IS_ABSOLUTE_PATH(p)      ((p)[0] == '/' || ((p)[0] && (p)[1] == ':'))
 #else
 #define PATH_SEPARATOR           '/'
 #define PATH_SEPARATOR_STRING    "/"
+#define IS_ABSOLUTE_PATH(p)      ((p)[0] == '/')
 #endif
 
 /* Limits with descriptive names */
