@@ -418,6 +418,7 @@ char* project_get_file_path(HcsProject* proj, const char* relative_path) {
     
     return join_path(proj->project_dir, relative_path);
 }
+
 bool is_project_file(const char *path)
 {
     if (!path)
