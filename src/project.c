@@ -487,49 +487,6 @@ bool project_save(HcsProject* proj, const char* path) {
     return true;
 }
 
-{
-    FILE *f = fopen(path, "w");
-    if (!f)
-        return false;
-
-    fprintf(f, "# HalcyonScript Project\n\n");
-    fprintf(f, "[project]\n");
-    fprintf(f, "name = \"%s\"\n", proj->name ? proj->name : "Untitled");
-    fprintf(f, "version = \"%s\"\n", proj->version ? proj->version : "1.0.0");
-    if (proj->author)
-        fprintf(f, "author = \"%s\"\n", proj->author);
-    if (proj->description)
-        fprintf(f, "description = \"%s\"\n", proj->description);
-    fprintf(f, "entry = \"%s\"\n", proj->entry_point ? proj->entry_point : "main.hcs");
-    if (proj->output)
-        fprintf(f, "output = \"%s\"\n", proj->output);
-    if (proj->icon)
-        fprintf(f, "icon = \"%s\"\n", proj->icon);
-    fprintf(f, "target = \"%s\"\n", proj->target ? proj->target : "windows");
-    fprintf(f, "debug = %s\n", proj->debug ? "true" : "false");
-    fprintf(f, "optimize = %s\n", proj->optimize ? "true" : "false");
-
-    if (proj->file_count > 0)
-    {
-        fprintf(f, "\n[files]\n");
-        for (int i = 0; i < proj->file_count; i++)
-        {
-            fprintf(f, "%s\n", proj->files[i]);
-        }
-    }
-
-    if (proj->include_dir_count > 0)
-    {
-        fprintf(f, "\n[include]\n");
-        for (int i = 0; i < proj->include_dir_count; i++)
-        {
-            fprintf(f, "%s\n", proj->include_dirs[i]);
-        }
-    }
-
-    fclose(f);
-    return true;
-}
 char* project_get_file_path(HcsProject* proj, const char* relative_path) {
     if (!proj || !relative_path) return NULL;
     
@@ -541,6 +498,26 @@ char* project_get_file_path(HcsProject* proj, const char* relative_path) {
     return join_path(proj->project_dir, relative_path);
 }
 
+static char* join_path(const char* dir, const char* file) {
+    if (!dir || !file) return NULL;
+    
+    size_t total_len = strlen(dir) + strlen(file) + 2;
+    char* result = malloc(total_len);
+    if (!result) return NULL;
+    
+    snprintf(result, total_len, "%s%c%s", dir, PATH_SEPARATOR, file);
+    return result;
+}
+
+char* project_get_file_path(HcsProject* proj, const char* relative_path) {
+    if (!proj || !relative_path) return NULL;
+    
+    if (IS_ABSOLUTE_PATH(relative_path)) {
+        return str_dup(relative_path);
+    }
+    
+    return join_path(proj->project_dir, relative_path);
+}
 {
     if (!path)
         return false;
