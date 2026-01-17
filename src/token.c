@@ -8,15 +8,17 @@
 
 HcsToken* token_create(HcsTokenType type, const char* value, int line, int column) {
     HcsToken* token = (HcsToken*)malloc(sizeof(HcsToken));
-    if (!token) return NULL;
+    if (token == NULL) {
+        return NULL;
+    }
     
     token->type = type;
     token->line = line;
     token->column = column;
     
-    if (value) {
+    if (value != NULL) {
         token->value = strdup(value);
-        if (!token->value) {
+        if (token->value == NULL) {
             free(token);
             return NULL;
         }
@@ -25,6 +27,13 @@ HcsToken* token_create(HcsTokenType type, const char* value, int line, int colum
     }
     
     return token;
+}
+
+void token_free(HcsToken* token) {
+    if (token != NULL) {
+        free(token->value);
+        free(token);
+    }
 }
 
 const char* token_type_name(HcsTokenType type) {
