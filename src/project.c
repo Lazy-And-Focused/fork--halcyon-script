@@ -426,7 +426,67 @@ HcsProject* project_load(const char* path) {
     return proj;
 }
 
-bool project_save(HcsProject *proj, const char *path)
+bool is_project_file(const char* path) {
+    if (!path) return false;
+    
+    const char* ext = strrchr(path, '.');
+    return ext && strcmp(ext, HCS_PROJECT_EXTENSION) == 0;
+}
+
+bool project_save(HcsProject* proj, const char* path) {
+    FILE* f = fopen(path, "w");
+    if (!f) return false;
+    
+    fprintf(f, "# HalcyonScript Project\n\n");
+    fprintf(f, SECTION_PROJECT "\n");
+    fprintf(f, KEY_NAME " = \"%s\"\n", 
+            proj->name ? proj->name : DEFAULT_PROJECT_NAME);
+    fprintf(f, KEY_VERSION " = \"%s\"\n", 
+            proj->version ? proj->version : DEFAULT_VERSION);
+    
+    if (proj->author) {
+        fprintf(f, KEY_AUTHOR " = \"%s\"\n", proj->author);
+    }
+    if (proj->description) {
+        fprintf(f, KEY_DESCRIPTION " = \"%s\"\n", proj->description);
+    }
+    
+    fprintf(f, KEY_ENTRY " = \"%s\"\n", 
+            proj->entry_point ? proj->entry_point : DEFAULT_ENTRY_POINT);
+    
+    if (proj->output) {
+        fprintf(f, KEY_OUTPUT " = \"%s\"\n", proj->output);
+    }
+    if (proj->icon) {
+        fprintf(f, KEY_ICON " = \"%s\"\n", proj->icon);
+    }
+    
+    fprintf(f, KEY_TARGET " = \"%s\"\n", 
+            proj->target ? proj->target : DEFAULT_TARGET);
+    
+    fprintf(f, KEY_DEBUG " = %s\n", 
+            proj->debug ? DEFAULT_TRUE_VALUE : DEFAULT_FALSE_VALUE);
+    fprintf(f, KEY_OPTIMIZE " = %s\n", 
+            proj->optimize ? DEFAULT_TRUE_VALUE : DEFAULT_FALSE_VALUE);
+    
+    if (proj->file_count > 0) {
+        fprintf(f, "\n" SECTION_FILES_HEADER "\n");
+        for (int i = 0; i < proj->file_count; i++) {
+            fprintf(f, "%s\n", proj->files[i]);
+        }
+    }
+    
+    if (proj->include_dir_count > 0) {
+        fprintf(f, "\n" SECTION_INCLUDE_HEADER "\n");
+        for (int i = 0; i < proj->include_dir_count; i++) {
+            fprintf(f, "%s\n", proj->include_dirs[i]);
+        }
+    }
+    
+    fclose(f);
+    return true;
+}
+
 {
     FILE *f = fopen(path, "w");
     if (!f)
@@ -470,7 +530,6 @@ bool project_save(HcsProject *proj, const char *path)
     fclose(f);
     return true;
 }
-
 char* project_get_file_path(HcsProject* proj, const char* relative_path) {
     if (!proj || !relative_path) return NULL;
     
@@ -482,7 +541,6 @@ char* project_get_file_path(HcsProject* proj, const char* relative_path) {
     return join_path(proj->project_dir, relative_path);
 }
 
-bool is_project_file(const char *path)
 {
     if (!path)
         return false;
