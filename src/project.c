@@ -114,10 +114,20 @@ static char *join_path(const char *dir, const char *file)
 HcsProject *project_create(void)
 {
     HcsProject *proj = calloc(1, sizeof(HcsProject));
+    if (!proj)
+        return NULL;
+
     proj->name = str_dup("Untitled");
     proj->version = str_dup("1.0.0");
     proj->entry_point = str_dup("main.hcs");
     proj->target = str_dup("windows");
+
+    if (!proj->name || !proj->version || !proj->entry_point || !proj->target)
+    {
+        project_free(proj);
+        return NULL;
+    }
+
     proj->debug = true;
     return proj;
 }
