@@ -35,11 +35,11 @@
 #ifdef _WIN32
 #define PATH_SEPARATOR           '\\'
 #define PATH_SEPARATOR_STRING    "\\"
-#define IS_ABSOLUTE_PATH(p)      ((p)[0] == '/' || ((p)[0] && (p)[1] == ':'))
+#define IS_ABSOLUTE_PATH(p)      ((p) && ((p)[0] == '/' || ((p)[0] != '\0' && (p)[1] == ':')))
 #else
 #define PATH_SEPARATOR           '/'
 #define PATH_SEPARATOR_STRING    "/"
-#define IS_ABSOLUTE_PATH(p)      ((p)[0] == '/')
+#define IS_ABSOLUTE_PATH(p)      ((p) && (p)[0] == '/')
 #endif
 
 #define MAX_PROJECT_FILES         256

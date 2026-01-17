@@ -9,6 +9,8 @@
 #ifdef _WIN32
 #include <windows.h>
 #include <direct.h>
+/* Windows compatible string comparison */
+#define strcasecmp _stricmp
 #else
 #include <unistd.h>
 #endif
@@ -76,12 +78,15 @@ static char* get_directory(const char* path) {
     
     if (last_sep) {
         *last_sep = '\0';
-    } else {
-        free(dir);
-        return str_dup(".");
+        if (dir[0] == '\0') {
+            free(dir);
+            return str_dup(".");
+        }
+        return dir;
     }
     
-    return dir;
+    free(dir);
+    return str_dup(".");
 }
 
 static char* join_path(const char* dir, const char* file) {
