@@ -430,60 +430,56 @@ bool is_project_file(const char *path)
     return ext && strcmp(ext, ".halproj") == 0;
 }
 
-char *project_resolve_import(HcsProject *proj, const char *import_path, const char *current_file)
-{
-    /* Try relative to current file first */
-    if (current_file)
-    {
-        char *current_dir = get_directory(current_file);
-        char *full_path = join_path(current_dir, import_path);
-        free(current_dir);
+static bool file_exists(const char* path) {
+    FILE* f = fopen(path, "r");
+    if (f) {
+        fclose(f);
+        return true;
+    }
+    return false;
+}
 
-        FILE *f = fopen(full_path, "r");
-        if (f)
-        {
-            fclose(f);
+char* project_resolve_import(HcsProject* proj, const char* import_path, 
+                             const char* current_file) {
+    if (!import_path) return NULL;
+    
+    // Try relative to current file first
+    if (current_file) {
+        char* current_dir = get_directory(current_file);
+        char* full_path = join_path(current_dir, import_path);
+        free(current_dir);
+        
+        if (full_path && file_exists(full_path)) {
             return full_path;
         }
         free(full_path);
     }
-
-    /* Try relative to project directory */
-    if (proj && proj->project_dir)
-    {
-        char *full_path = join_path(proj->project_dir, import_path);
-        FILE *f = fopen(full_path, "r");
-        if (f)
-        {
-            fclose(f);
+    
+    // Try relative to project directory
+    if (proj && proj->project_dir) {
+        char* full_path = join_path(proj->project_dir, import_path);
+        if (full_path && file_exists(full_path)) {
             return full_path;
         }
         free(full_path);
-
-        /* Try include directories */
-        for (int i = 0; i < proj->include_dir_count; i++)
-        {
-            char *inc_dir = join_path(proj->project_dir, proj->include_dirs[i]);
+        
+        // Try include directories
+        for (int i = 0; i < proj->include_dir_count; i++) {
+            char* inc_dir = join_path(proj->project_dir, proj->include_dirs[i]);
             full_path = join_path(inc_dir, import_path);
             free(inc_dir);
-
-            f = fopen(full_path, "r");
-            if (f)
-            {
-                fclose(f);
+            
+            if (full_path && file_exists(full_path)) {
                 return full_path;
             }
             free(full_path);
         }
     }
-
-    /* Try as absolute path */
-    FILE *f = fopen(import_path, "r");
-    if (f)
-    {
-        fclose(f);
+    
+    // Try as absolute path
+    if (file_exists(import_path)) {
         return str_dup(import_path);
     }
-
+    
     return NULL;
 }
