@@ -36,77 +36,81 @@
 #define PATH_SEP_STR "/"
 #endif
 
-static char *str_dup(const char *s)
-{
-    if (!s)
-        return NULL;
+#include "project.h"
 
-    char *d = malloc(strlen(s) + 1);
-    if (!d)
-        return NULL;
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
 
+#ifdef _WIN32
+#include <windows.h>
+#include <direct.h>
+#define PATH_SEP '\\'
+#define PATH_SEP_STR "\\"
+#define IS_ABSOLUTE_PATH(p) ((p)[0] == '/' || ((p)[0] && (p)[1] == ':'))
+#else
+#include <unistd.h>
+#define PATH_SEP '/'
+#define PATH_SEP_STR "/"
+#define IS_ABSOLUTE_PATH(p) ((p)[0] == '/')
+#endif
+
+typedef enum {
+    SECTION_MAIN,
+    SECTION_FILES,
+    SECTION_INCLUDE
+} ParserSection;
+
+static char* str_dup(const char* s) {
+    if (!s) return NULL;
+    
+    char* d = malloc(strlen(s) + 1);
+    if (!d) return NULL;
+    
     strcpy(d, s);
     return d;
 }
 
-static char *trim(char *str)
-{
-    if (!str)
-        return NULL;
-
-    while (isspace((unsigned char)*str))
-        str++;
-
-    if (*str == '\0')
-        return str;
-
-    char *end = str + strlen(str) - 1;
-    while (end > str && isspace((unsigned char)*end))
-        end--;
-
+static char* trim(char* str) {
+    if (!str) return NULL;
+    
+    while (isspace((unsigned char)*str)) str++;
+    if (*str == '\0') return str;
+    
+    char* end = str + strlen(str) - 1;
+    while (end > str && isspace((unsigned char)*end)) end--;
+    
     *(end + 1) = '\0';
     return str;
 }
 
-static char *get_directory(const char *path)
-{
-    if (!path)
-        return str_dup(".");
-
-    char *dir = str_dup(path);
-    if (!dir)
-        return str_dup(".");
-
-    char *last_sep = strrchr(dir, PATH_SEP);
-    if (!last_sep)
-        last_sep = strrchr(dir, '/');
-
-    if (last_sep)
-    {
+static char* get_directory(const char* path) {
+    if (!path) return str_dup(".");
+    
+    char* dir = str_dup(path);
+    if (!dir) return str_dup(".");
+    
+    char* last_sep = strrchr(dir, PATH_SEP);
+    if (!last_sep) last_sep = strrchr(dir, '/');
+    
+    if (last_sep) {
         *last_sep = '\0';
-    }
-    else
-    {
+    } else {
         free(dir);
         return str_dup(".");
     }
-
+    
     return dir;
 }
 
-static char *join_path(const char *dir, const char *file)
-{
-    if (!dir || !file)
-        return NULL;
-
-    size_t dir_len = strlen(dir);
-    size_t file_len = strlen(file);
-    size_t total_len = dir_len + file_len + 2;
-
-    char *result = malloc(total_len);
-    if (!result)
-        return NULL;
-
+static char* join_path(const char* dir, const char* file) {
+    if (!dir || !file) return NULL;
+    
+    size_t total_len = strlen(dir) + strlen(file) + 2;
+    char* result = malloc(total_len);
+    if (!result) return NULL;
+    
     snprintf(result, total_len, "%s%c%s", dir, PATH_SEP, file);
     return result;
 }
