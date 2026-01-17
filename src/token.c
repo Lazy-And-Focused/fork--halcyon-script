@@ -3,6 +3,8 @@
  */
 
 #include "token.h"
+#include <stdlib.h>
+#include <string.h>
 
 HcsToken* token_create(HcsTokenType type, const char* value, int line, int column) {
     HcsToken* token = (HcsToken*)malloc(sizeof(HcsToken));
