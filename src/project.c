@@ -58,11 +58,6 @@ static bool is_comment_char(char c) {
     return false;
 }
 
-static bool is_comment_or_empty(const char* line) {
-    return line[0] == '\0' || line[0] == '#' || line[0] == ';';
-}
-
-
 typedef enum {
     SECTION_MAIN,
     SECTION_FILES,
@@ -122,25 +117,90 @@ static char* join_path(const char* dir, const char* file) {
     return result;
 }
 
-HcsProject *project_create(void)
-{
-    HcsProject *proj = calloc(1, sizeof(HcsProject));
-    if (!proj)
-        return NULL;
-
-    proj->name = str_dup("Untitled");
-    proj->version = str_dup("1.0.0");
-    proj->entry_point = str_dup("main.hcs");
-    proj->target = str_dup("windows");
-
-    if (!proj->name || !proj->version || !proj->entry_point || !proj->target)
-    {
+HcsProject* project_create(void) {
+    HcsProject* proj = calloc(1, sizeof(HcsProject));
+    if (!proj) return NULL;
+    
+    proj->name = str_dup(DEFAULT_PROJECT_NAME);
+    proj->version = str_dup(DEFAULT_VERSION);
+    proj->entry_point = str_dup(DEFAULT_ENTRY_POINT);
+    proj->target = str_dup(DEFAULT_TARGET);
+    
+    if (!proj->name || !proj->version || !proj->entry_point || !proj->target) {
         project_free(proj);
         return NULL;
     }
-
+    
     proj->debug = true;
     return proj;
+}
+
+static bool is_comment_or_empty(const char* line) {
+    if (!line || line[0] == '\0') return true;
+    return is_comment_char(line[0]);
+}
+
+static ParserSection parse_section_header(const char* line) {
+    if (strcmp(line, SECTION_FILES_HEADER) == 0) return SECTION_FILES;
+    if (strcmp(line, SECTION_INCLUDE_HEADER) == 0) return SECTION_INCLUDE;
+    if (strcmp(line, SECTION_PROJECT) == 0) return SECTION_MAIN;
+    return SECTION_MAIN;
+}
+
+static bool parse_key_value(HcsProject* proj, const char* key, char* value) {
+    if (!key || !value) return false;
+    
+    if (strcmp(key, KEY_NAME) == 0) {
+        free(proj->name);
+        proj->name = str_dup(value);
+        return proj->name != NULL;
+    }
+    if (strcmp(key, KEY_VERSION) == 0) {
+        free(proj->version);
+        proj->version = str_dup(value);
+        return proj->version != NULL;
+    }
+    if (strcmp(key, KEY_AUTHOR) == 0) {
+        free(proj->author);
+        proj->author = str_dup(value);
+        return true; // Optional field
+    }
+    if (strcmp(key, KEY_DESCRIPTION) == 0) {
+        free(proj->description);
+        proj->description = str_dup(value);
+        return true; // Optional field
+    }
+    if (strcmp(key, KEY_ENTRY) == 0) {
+        free(proj->entry_point);
+        proj->entry_point = str_dup(value);
+        return proj->entry_point != NULL;
+    }
+    if (strcmp(key, KEY_OUTPUT) == 0) {
+        free(proj->output);
+        proj->output = str_dup(value);
+        return true; // Optional field
+    }
+    if (strcmp(key, KEY_ICON) == 0) {
+        free(proj->icon);
+        proj->icon = str_dup(value);
+        return true; // Optional field
+    }
+    if (strcmp(key, KEY_TARGET) == 0) {
+        free(proj->target);
+        proj->target = str_dup(value);
+        return proj->target != NULL;
+    }
+    if (strcmp(key, KEY_DEBUG) == 0) {
+        proj->debug = string_to_bool(value);
+        return true;
+    }
+    if (strcmp(key, KEY_OPTIMIZE) == 0) {
+        proj->optimize = string_to_bool(value);
+        return true;
+    }
+    
+    // Unknown key - ignore but don't fail
+    return true;
 }
 
 void project_free(HcsProject *proj)
