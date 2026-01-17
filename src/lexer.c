@@ -459,39 +459,73 @@ static HcsToken* read_operator(HcsLexer* lexer) {
     return token_create(HCS_TOK_UNKNOWN, buffer, lexer->line, start_column);
 }
 
+typedef HcsToken* (*TokenReader)(HcsLexer*);
+typedef struct {
+    bool (*predicate)(char);
+    TokenReader reader;
+} TokenHandler;
+
+static bool is_newline_char(char c) {
+    return c == NEWLINE_CHARACTER;
+}
+
+static bool is_identifier_start_char(char c) {
+    return isalpha((unsigned char)c) || c == UNDERSCORE_CHARACTER;
+}
+
+static bool is_number_start_char(char c) {
+    return isdigit((unsigned char)c);
+}
+
+static bool is_string_start_char(char c) {
+    return c == DOUBLE_QUOTE_CHARACTER || c == SINGLE_QUOTE_CHARACTER;
+}
+
+static HcsToken* read_newline_token(HcsLexer* lexer) {
+    HcsToken* token = token_create(HCS_TOK_NEWLINE, NEWLINE_REPRESENTATION, lexer->line, lexer->column);
+    lexer_advance(lexer);
+    lexer->line++;
+    lexer->column = 1;
+    return token;
+}
+
+static HcsToken* read_string_token(HcsLexer* lexer) {
+    char quote = lexer_get_current(lexer);
+    return read_string(lexer, quote);
+}
+
+static TokenHandler token_handlers[] = {
+    {is_newline_char,        read_newline_token},
+    {is_identifier_start_char, read_identifier},
+    {is_number_start_char,   read_number},
+    {is_string_start_char,   read_string_token},
+    {NULL,                   read_operator}
+};
+
 HcsToken** lexer_tokenize(HcsLexer* lexer, int* token_count) {
     HcsToken** tokens = (HcsToken**)malloc(sizeof(HcsToken*) * MAX_TOKENS);
     int count = 0;
     
-    while (lexer->position < lexer->length) {
+    while (lexer->position < lexer->length && count < MAX_TOKENS - 1) {
         skip_whitespace_and_comments(lexer);
-        if (lexer->position >= lexer->length) break;
+        if (lexer->position >= lexer->length) {
+            break;
+        }
         
-        char c = lexer_get_current(lexer);
+        char current = lexer_get_current(lexer);
         HcsToken* token = NULL;
         
-        if (c == NEWLINE_CHARACTER) {
-            token = token_create(HCS_TOK_NEWLINE, NEWLINE_REPRESENTATION, lexer->line, lexer->column);
-            lexer_advance(lexer);
-            lexer->line++;
-            lexer->column = 1;
-        }
-        else if (isalpha((unsigned char)c) || c == UNDERSCORE_CHARACTER) {
-            token = read_identifier(lexer);
-        }
-        else if (isdigit((unsigned char)c)) {
-            token = read_number(lexer);
-        }
-        else if (c == DOUBLE_QUOTE_CHARACTER || c == SINGLE_QUOTE_CHARACTER) {
-            token = read_string(lexer, c);
-        }
-        else {
-            token = read_operator(lexer);
+        for (size_t i = 0; i < sizeof(token_handlers) / sizeof(token_handlers[0]); i++) {
+            TokenHandler handler = token_handlers[i];
+            
+            if (handler.predicate == NULL || handler.predicate(current)) {
+                token = handler.reader(lexer);
+                break;
+            }
         }
         
         if (token) {
             tokens[count++] = token;
-            if (count >= MAX_TOKENS - 1) break;
         }
     }
     
