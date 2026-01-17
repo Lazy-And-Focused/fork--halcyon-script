@@ -408,20 +408,16 @@ bool project_save(HcsProject *proj, const char *path)
     return true;
 }
 
-char *project_get_file_path(HcsProject *proj, const char *relative_path)
-{
-    if (!proj || !relative_path)
-        return NULL;
-
-    /* If absolute path, return as-is */
-    if (relative_path[0] == '/' || (relative_path[1] == ':'))
-    {
+char* project_get_file_path(HcsProject* proj, const char* relative_path) {
+    if (!proj || !relative_path) return NULL;
+    
+    // If absolute path, return as-is
+    if (IS_ABSOLUTE_PATH(relative_path)) {
         return str_dup(relative_path);
     }
-
+    
     return join_path(proj->project_dir, relative_path);
 }
-
 bool is_project_file(const char *path)
 {
     if (!path)
