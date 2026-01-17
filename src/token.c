@@ -6,38 +6,47 @@
 #include <stdlib.h>
 #include <string.h>
 
-HcsToken* token_create(HcsTokenType type, const char* value, int line, int column) {
-    HcsToken* token = (HcsToken*)malloc(sizeof(HcsToken));
-    if (token == NULL) {
+HcsToken *token_create(HcsTokenType type, const char *value, int line, int column)
+{
+    HcsToken *token = (HcsToken *)malloc(sizeof(HcsToken));
+    if (token == NULL)
+    {
         return NULL;
     }
-    
+
     token->type = type;
     token->line = line;
     token->column = column;
-    
-    if (value != NULL) {
+
+    if (value != NULL)
+    {
         token->value = strdup(value);
-        if (token->value == NULL) {
+        if (token->value == NULL)
+        {
             free(token);
             return NULL;
         }
-    } else {
+    }
+    else
+    {
         token->value = NULL;
     }
-    
+
     return token;
 }
 
-void token_free(HcsToken* token) {
-    if (token != NULL) {
+void token_free(HcsToken *token)
+{
+    if (token != NULL)
+    {
         free(token->value);
         free(token);
     }
 }
 
-const char* token_type_name(HcsTokenType type) {
-    static const char* names[] = {
+const char *token_type_name(HcsTokenType type)
+{
+    static const char *names[] = {
         "CREATE", "WINDOW", "BUTTON", "LABEL", "INPUT", "LISTBOX",
         "CHECKBOX", "IMAGE", "PANEL", "TEXTAREA", "DROPDOWN", "SLIDER",
         "PROGRESS", "TAB", "TABS", "MENU", "MENUITEM", "TOOLBAR",
@@ -75,9 +84,10 @@ const char* token_type_name(HcsTokenType type) {
         "INCREMENT", "DECREMENT",
         "LPAREN", "RPAREN", "LBRACE", "RBRACE", "LBRACKET", "RBRACKET",
         "COMMA", "DOT", "COLON", "SEMICOLON", "ARROW", "QUESTION",
-        "NEWLINE", "EOF", "UNKNOWN"
-    };
-    if (type >= 0 && type <= HCS_TOK_UNKNOWN) {
+        "NEWLINE", "EOF", "UNKNOWN"};
+
+    if (type >= 0 && type <= HCS_TOK_UNKNOWN)
+    {
         return names[type];
     }
     return "UNKNOWN";
