@@ -13,9 +13,14 @@
 #include <unistd.h>
 #endif
 
-/* Boolean value checking */
 static const char* TRUE_VALUE_STRINGS[] = TRUE_VALUES;
 static const int NUM_TRUE_VALUES = TRUE_VALUES_COUNT;
+
+typedef enum {
+    SECTION_MAIN,
+    SECTION_FILES,
+    SECTION_INCLUDE
+} ParserSection;
 
 static bool string_to_bool(const char* str) {
     if (!str) return false;
@@ -36,12 +41,6 @@ static bool is_comment_char(char c) {
     }
     return false;
 }
-
-typedef enum {
-    SECTION_MAIN,
-    SECTION_FILES,
-    SECTION_INCLUDE
-} ParserSection;
 
 static char* str_dup(const char* s) {
     if (!s) return NULL;
@@ -94,6 +93,15 @@ static char* join_path(const char* dir, const char* file) {
     
     snprintf(result, total_len, "%s%c%s", dir, PATH_SEPARATOR, file);
     return result;
+}
+
+static bool file_exists(const char* path) {
+    FILE* f = fopen(path, "r");
+    if (f) {
+        fclose(f);
+        return true;
+    }
+    return false;
 }
 
 HcsProject* project_create(void) {
@@ -394,15 +402,6 @@ char* project_get_file_path(HcsProject* proj, const char* relative_path) {
     }
     
     return join_path(proj->project_dir, relative_path);
-}
-
-static bool file_exists(const char* path) {
-    FILE* f = fopen(path, "r");
-    if (f) {
-        fclose(f);
-        return true;
-    }
-    return false;
 }
 
 char* project_resolve_import(HcsProject* proj, const char* import_path, 
