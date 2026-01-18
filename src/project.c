@@ -148,7 +148,7 @@ static bool parse_key_value(HcsProject* proj, const char* key, char* value) {
         bool required;
     } FieldMapping;
     
-    static const FieldMapping mappings[] = {
+    FieldMapping mappings[] = {
         {KEY_NAME, &proj->name, true},
         {KEY_VERSION, &proj->version, true},
         {KEY_AUTHOR, &proj->author, false},
