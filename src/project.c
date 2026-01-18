@@ -24,7 +24,8 @@ typedef enum {
     SECTION_INCLUDE
 } ParserSection;
 
-static bool string_to_bool(const char* str) {
+/* @todo Convert to utils.c */
+static bool hcs_string_to_bool(const char* str) {
     if (!str) return false;
     
     for (int i = 0; i < NUM_TRUE_VALUES; i++) {
@@ -44,7 +45,8 @@ static bool is_comment_char(char c) {
     return false;
 }
 
-static char* str_dup(const char* s) {
+/* @todo Convert to utils.c */
+static char* hcs_strdup(const char* s) {
     if (!s) return NULL;
     
     char* d = malloc(strlen(s) + 1);
@@ -54,7 +56,8 @@ static char* str_dup(const char* s) {
     return d;
 }
 
-static char* trim(char* str) {
+/* @todo Convert to utils.c */
+static char* hcs_trim(char* str) {
     if (!str) return NULL;
     
     while (isspace((unsigned char)*str)) str++;
@@ -68,10 +71,10 @@ static char* trim(char* str) {
 }
 
 static char* get_directory(const char* path) {
-    if (!path) return str_dup(".");
+    if (!path) return hcs_strdup(".");
     
-    char* dir = str_dup(path);
-    if (!dir) return str_dup(".");
+    char* dir = hcs_strdup(path);
+    if (!dir) return hcs_strdup(".");
     
     char* last_sep = strrchr(dir, PATH_SEPARATOR);
     if (!last_sep) last_sep = strrchr(dir, '/');
@@ -80,16 +83,17 @@ static char* get_directory(const char* path) {
         *last_sep = '\0';
         if (dir[0] == '\0') {
             free(dir);
-            return str_dup(".");
+            return hcs_strdup(".");
         }
         return dir;
     }
     
     free(dir);
-    return str_dup(".");
+    return hcs_strdup(".");
 }
 
-static char* join_path(const char* dir, const char* file) {
+/* @todo Convert to utils.c */
+static char* hcs_join_path(const char* dir, const char* file) {
     if (!dir || !file) return NULL;
     
     size_t total_len = strlen(dir) + strlen(file) + 2;
@@ -113,10 +117,10 @@ HcsProject* project_create(void) {
     HcsProject* proj = calloc(1, sizeof(HcsProject));
     if (!proj) return NULL;
     
-    proj->name = str_dup(DEFAULT_PROJECT_NAME);
-    proj->version = str_dup(DEFAULT_VERSION);
-    proj->entry_point = str_dup(DEFAULT_ENTRY_POINT);
-    proj->target = str_dup(DEFAULT_TARGET);
+    proj->name = hcs_strdup(DEFAULT_PROJECT_NAME);
+    proj->version = hcs_strdup(DEFAULT_VERSION);
+    proj->entry_point = hcs_strdup(DEFAULT_ENTRY_POINT);
+    proj->target = hcs_strdup(DEFAULT_TARGET);
     
     if (!proj->name || !proj->version || !proj->entry_point || !proj->target) {
         project_free(proj);
@@ -194,8 +198,8 @@ static bool parse_main_section_line(HcsProject* proj, char* line) {
     if (!eq) return true;
     
     *eq = '\0';
-    char* key = trim(line);
-    char* value = trim(eq + 1);
+    char* key = hcs_trim(line);
+    char* value = hcs_trim(eq + 1);
     
     remove_quotes(value);
     return parse_key_value(proj, key, value);
@@ -208,7 +212,7 @@ static bool add_project_file(HcsProject* proj, const char* file) {
         return false;
     }
     
-    proj->files[proj->file_count] = str_dup(file);
+    proj->files[proj->file_count] = hcs_strdup(file);
     if (!proj->files[proj->file_count]) return false;
     
     proj->file_count++;
@@ -222,7 +226,7 @@ static bool add_include_dir(HcsProject* proj, const char* dir) {
         return false;
     }
     
-    proj->include_dirs[proj->include_dir_count] = str_dup(dir);
+    proj->include_dirs[proj->include_dir_count] = hcs_strdup(dir);
     if (!proj->include_dirs[proj->include_dir_count]) return false;
     
     proj->include_dir_count++;
@@ -274,7 +278,7 @@ HcsProject* project_load(const char* path) {
     bool error = false;
     
     while (fgets(line, sizeof(line), f) && !error) {
-        char* trimmed = trim(line);
+        char* trimmed = hcs_trim(line);
         
         if (is_comment_or_empty(trimmed)) continue;
         
@@ -388,10 +392,10 @@ char* project_get_file_path(HcsProject* proj, const char* relative_path) {
     if (!proj || !relative_path) return NULL;
     
     if (IS_ABSOLUTE_PATH(relative_path)) {
-        return str_dup(relative_path);
+        return hcs_strdup(relative_path);
     }
     
-    return join_path(proj->project_dir, relative_path);
+    return hcs_join_path(proj->project_dir, relative_path);
 }
 
 char* project_resolve_import(HcsProject* proj, const char* import_path, 
@@ -400,7 +404,7 @@ char* project_resolve_import(HcsProject* proj, const char* import_path,
     
     if (current_file) {
         char* current_dir = get_directory(current_file);
-        char* full_path = join_path(current_dir, import_path);
+        char* full_path = hcs_join_path(current_dir, import_path);
         free(current_dir);
         
         if (full_path && file_exists(full_path)) {
@@ -410,15 +414,15 @@ char* project_resolve_import(HcsProject* proj, const char* import_path,
     }
     
     if (proj && proj->project_dir) {
-        char* full_path = join_path(proj->project_dir, import_path);
+        char* full_path = hcs_join_path(proj->project_dir, import_path);
         if (full_path && file_exists(full_path)) {
             return full_path;
         }
         free(full_path);
         
         for (int i = 0; i < proj->include_dir_count; i++) {
-            char* inc_dir = join_path(proj->project_dir, proj->include_dirs[i]);
-            full_path = join_path(inc_dir, import_path);
+            char* inc_dir = hcs_join_path(proj->project_dir, proj->include_dirs[i]);
+            full_path = hcs_join_path(inc_dir, import_path);
             free(inc_dir);
             
             if (full_path && file_exists(full_path)) {
@@ -429,7 +433,7 @@ char* project_resolve_import(HcsProject* proj, const char* import_path,
     }
     
     if (file_exists(import_path)) {
-        return str_dup(import_path);
+        return hcs_strdup(import_path);
     }
     
     return NULL;
