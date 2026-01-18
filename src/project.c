@@ -15,16 +15,13 @@
 #include <unistd.h>
 #endif
 
+// =====================================================================
+// СЕКЦИЯ: Внутренние утилиты (будут перенесены в utils.c позже)
+// =====================================================================
+
 static const char* TRUE_VALUE_STRINGS[] = TRUE_VALUES;
 static const int NUM_TRUE_VALUES = TRUE_VALUES_COUNT;
 
-typedef enum {
-    SECTION_MAIN,
-    SECTION_FILES,
-    SECTION_INCLUDE
-} ParserSection;
-
-/* @todo Convert to utils.c */
 static bool hcs_string_to_bool(const char* str) {
     if (!str) return false;
     
@@ -45,7 +42,6 @@ static bool is_comment_char(char c) {
     return false;
 }
 
-/* @todo Convert to utils.c */
 static char* hcs_strdup(const char* s) {
     if (!s) return NULL;
     
@@ -56,47 +52,38 @@ static char* hcs_strdup(const char* s) {
     return d;
 }
 
-/* @todo Convert to utils.c */
 static char* hcs_trim(char* str) {
     if (!str) return NULL;
     
+    // Пропускаем начальные пробелы
     while (isspace((unsigned char)*str)) str++;
     if (*str == '\0') return str;
     
+    // Убираем конечные пробелы
     char* end = str + strlen(str) - 1;
     while (end > str && isspace((unsigned char)*end)) end--;
     
-    *(end + 1) = '\0';
+    end[1] = '\0';
     return str;
 }
 
-static char* get_directory(const char* path) {
-    if (!path) return hcs_strdup(".");
+static void hcs_remove_quotes(char* str) {
+    if (!str || str[0] != '"') return;
     
-    char* dir = hcs_strdup(path);
-    if (!dir) return hcs_strdup(".");
-    
-    char* last_sep = strrchr(dir, PATH_SEPARATOR);
-    if (!last_sep) last_sep = strrchr(dir, '/');
-    
-    if (last_sep) {
-        *last_sep = '\0';
-        if (dir[0] == '\0') {
-            free(dir);
-            return hcs_strdup(".");
-        }
-        return dir;
+    size_t len = strlen(str);
+    if (len > 1 && str[len - 1] == '"') {
+        memmove(str, str + 1, len - 2);
+        str[len - 2] = '\0';
     }
-    
-    free(dir);
-    return hcs_strdup(".");
 }
 
-/* @todo Convert to utils.c */
 static char* hcs_join_path(const char* dir, const char* file) {
     if (!dir || !file) return NULL;
     
-    size_t total_len = strlen(dir) + strlen(file) + 2;
+    size_t dir_len = strlen(dir);
+    size_t file_len = strlen(file);
+    size_t total_len = dir_len + file_len + 2;
+    
     char* result = malloc(total_len);
     if (!result) return NULL;
     
@@ -104,32 +91,54 @@ static char* hcs_join_path(const char* dir, const char* file) {
     return result;
 }
 
-static bool file_exists(const char* path) {
+static bool hcs_file_exists(const char* path) {
+    if (!path) return false;
+    
     FILE* f = fopen(path, "r");
-    if (f) {
-        fclose(f);
-        return true;
-    }
-    return false;
+    if (!f) return false;
+    
+    fclose(f);
+    return true;
 }
 
-HcsProject* project_create(void) {
-    HcsProject* proj = calloc(1, sizeof(HcsProject));
-    if (!proj) return NULL;
+static char* hcs_get_directory(const char* path) {
+    if (!path) return hcs_strdup(".");
     
-    proj->name = hcs_strdup(DEFAULT_PROJECT_NAME);
-    proj->version = hcs_strdup(DEFAULT_VERSION);
-    proj->entry_point = hcs_strdup(DEFAULT_ENTRY_POINT);
-    proj->target = hcs_strdup(DEFAULT_TARGET);
+    char* dir_copy = hcs_strdup(path);
+    if (!dir_copy) return hcs_strdup(".");
     
-    if (!proj->name || !proj->version || !proj->entry_point || !proj->target) {
-        project_free(proj);
-        return NULL;
+    char* last_sep = strrchr(dir_copy, PATH_SEPARATOR);
+    if (!last_sep) {
+        char alternate_sep = (PATH_SEPARATOR == '/') ? '\\' : '/';
+        last_sep = strrchr(dir_copy, alternate_sep);
     }
     
-    proj->debug = true;
-    return proj;
+    if (last_sep) {
+        *last_sep = '\0';
+        if (dir_copy[0] == '\0') {
+            free(dir_copy);
+            return hcs_strdup(".");
+        }
+        return dir_copy;
+    }
+    
+    free(dir_copy);
+    return hcs_strdup(".");
 }
+
+// =====================================================================
+// СЕКЦИЯ: Внутренние типы и константы
+// =====================================================================
+
+typedef enum {
+    SECTION_MAIN,
+    SECTION_FILES,
+    SECTION_INCLUDE
+} ParserSection;
+
+// =====================================================================
+// СЕКЦИЯ: Вспомогательные функции для парсинга
+// =====================================================================
 
 static bool is_comment_or_empty(const char* line) {
     if (!line || line[0] == '\0') return true;
@@ -137,14 +146,30 @@ static bool is_comment_or_empty(const char* line) {
 }
 
 static ParserSection parse_section_header(const char* line) {
+    if (!line) return SECTION_MAIN;
+    
     if (strcmp(line, SECTION_FILES_HEADER) == 0) return SECTION_FILES;
     if (strcmp(line, SECTION_INCLUDE_HEADER) == 0) return SECTION_INCLUDE;
     if (strcmp(line, SECTION_PROJECT) == 0) return SECTION_MAIN;
+    
     return SECTION_MAIN;
 }
 
-static bool parse_key_value(HcsProject* proj, const char* key, char* value) {
-    if (!key || !value || !proj) return false;
+static bool hcs_update_string_field(char** field, const char* value, bool required) {
+    if (!field) return false;
+    
+    free(*field);
+    *field = hcs_strdup(value);
+    
+    if (required && *field == NULL) {
+        return false;
+    }
+    
+    return true;
+}
+
+static bool parse_key_value(HcsProject* proj, const char* key, const char* value) {
+    if (!proj || !key || !value) return false;
     
     typedef struct {
         const char* key;
@@ -165,9 +190,7 @@ static bool parse_key_value(HcsProject* proj, const char* key, char* value) {
     
     for (size_t i = 0; i < sizeof(mappings) / sizeof(mappings[0]); i++) {
         if (strcmp(key, mappings[i].key) == 0) {
-            free(*mappings[i].field);
-            *mappings[i].field = hcs_strdup(value);
-            return !mappings[i].required || (*mappings[i].field != NULL);
+            return hcs_update_string_field(mappings[i].field, value, mappings[i].required);
         }
     }
     
@@ -180,32 +203,34 @@ static bool parse_key_value(HcsProject* proj, const char* key, char* value) {
         return true;
     }
     
+    // Игнорируем неизвестные ключи
     return true;
 }
 
-static void remove_quotes(char* str) {
-    if (!str || str[0] != '"') return;
-    
-    size_t len = strlen(str);
-    if (len > 1 && str[len - 1] == '"') {
-        memmove(str, str + 1, len - 2);
-        str[len - 2] = '\0';
-    }
-}
-
 static bool parse_main_section_line(HcsProject* proj, char* line) {
+    if (!proj || !line) return false;
+    
     char* eq = strchr(line, '=');
     if (!eq) return true;
     
     *eq = '\0';
+    
     char* key = hcs_trim(line);
     char* value = hcs_trim(eq + 1);
     
-    remove_quotes(value);
+    if (!key || !value) return false;
+    
+    hcs_remove_quotes(value);
     return parse_key_value(proj, key, value);
 }
 
+// =====================================================================
+// СЕКЦИЯ: Функции для работы с коллекциями (файлы, директории)
+// =====================================================================
+
 static bool add_project_file(HcsProject* proj, const char* file) {
+    if (!proj || !file) return false;
+    
     if (proj->file_count >= MAX_PROJECT_FILES) {
         fprintf(stderr, "Warning: Maximum project files (%d) reached\n", 
                 MAX_PROJECT_FILES);
@@ -220,6 +245,8 @@ static bool add_project_file(HcsProject* proj, const char* file) {
 }
 
 static bool add_include_dir(HcsProject* proj, const char* dir) {
+    if (!proj || !dir) return false;
+    
     if (proj->include_dir_count >= MAX_INCLUDE_DIRS) {
         fprintf(stderr, "Warning: Maximum include directories (%d) reached\n", 
                 MAX_INCLUDE_DIRS);
@@ -231,6 +258,30 @@ static bool add_include_dir(HcsProject* proj, const char* dir) {
     
     proj->include_dir_count++;
     return true;
+}
+
+// =====================================================================
+// СЕКЦИЯ: Публичный API
+// =====================================================================
+
+HcsProject* project_create(void) {
+    HcsProject* proj = calloc(1, sizeof(HcsProject));
+    if (!proj) return NULL;
+    
+    proj->name = hcs_strdup(DEFAULT_PROJECT_NAME);
+    proj->version = hcs_strdup(DEFAULT_VERSION);
+    proj->entry_point = hcs_strdup(DEFAULT_ENTRY_POINT);
+    proj->target = hcs_strdup(DEFAULT_TARGET);
+    
+    if (!proj->name || !proj->version || !proj->entry_point || !proj->target) {
+        project_free(proj);
+        return NULL;
+    }
+    
+    proj->debug = true;
+    proj->optimize = false;
+    
+    return proj;
 }
 
 void project_free(HcsProject* proj) {
@@ -258,6 +309,11 @@ void project_free(HcsProject* proj) {
 }
 
 HcsProject* project_load(const char* path) {
+    if (!path) {
+        fprintf(stderr, "Error: Null path provided\n");
+        return NULL;
+    }
+    
     FILE* f = fopen(path, "r");
     if (!f) {
         fprintf(stderr, "Error: Cannot open project file: %s\n", path);
@@ -267,48 +323,51 @@ HcsProject* project_load(const char* path) {
     HcsProject* proj = project_create();
     if (!proj) {
         fclose(f);
+        fprintf(stderr, "Error: Failed to create project structure\n");
         return NULL;
     }
     
     free(proj->project_dir);
-    proj->project_dir = get_directory(path);
+    proj->project_dir = hcs_get_directory(path);
     
     char line[MAX_LINE_LENGTH];
-    ParserSection section = SECTION_MAIN;
-    bool error = false;
+    ParserSection current_section = SECTION_MAIN;
+    bool has_error = false;
     
-    while (fgets(line, sizeof(line), f) && !error) {
+    while (fgets(line, sizeof(line), f) && !has_error) {
+        line[strcspn(line, "\n")] = '\0';
+        
         char* trimmed = hcs_trim(line);
         
-        if (is_comment_or_empty(trimmed)) continue;
-        
-        if (trimmed[0] == '[') {
-            section = parse_section_header(trimmed);
+        if (is_comment_or_empty(trimmed)) {
             continue;
         }
         
-        switch (section) {
+        // Обработка заголовков секций
+        if (trimmed[0] == '[') {
+            current_section = parse_section_header(trimmed);
+            continue;
+        }
+        
+        switch (current_section) {
             case SECTION_MAIN:
-                error = !parse_main_section_line(proj, trimmed);
+                has_error = !parse_main_section_line(proj, trimmed);
                 break;
                 
             case SECTION_FILES:
-                if (!add_project_file(proj, trimmed)) {
-                    error = true;
-                }
+                has_error = !add_project_file(proj, trimmed);
                 break;
                 
             case SECTION_INCLUDE:
-                if (!add_include_dir(proj, trimmed)) {
-                    error = true;
-                }
+                has_error = !add_include_dir(proj, trimmed);
                 break;
         }
     }
     
     fclose(f);
     
-    if (error) {
+    if (has_error) {
+        fprintf(stderr, "Error: Failed to parse project file\n");
         project_free(proj);
         return NULL;
     }
@@ -335,36 +394,47 @@ bool is_project_file(const char* path) {
 }
 
 bool project_save(HcsProject* proj, const char* path) {
-    FILE* f = fopen(path, "w");
-    if (!f) return false;
+    if (!proj || !path) return false;
     
-    fprintf(f, "# HalcyonScript Project\n\n");
+    FILE* f = fopen(path, "w");
+    if (!f) {
+        fprintf(stderr, "Error: Cannot create project file: %s\n", path);
+        return false;
+    }
+    
+    fprintf(f, "# HalcyonScript Project\n");
+    fprintf(f, "# Generated by HalcyonScript\n\n");
+    
     fprintf(f, SECTION_PROJECT "\n");
     fprintf(f, KEY_NAME " = \"%s\"\n", 
             proj->name ? proj->name : DEFAULT_PROJECT_NAME);
     fprintf(f, KEY_VERSION " = \"%s\"\n", 
             proj->version ? proj->version : DEFAULT_VERSION);
     
-    if (proj->author) {
+    // Опциональные поля
+    if (proj->author && proj->author[0] != '\0') {
         fprintf(f, KEY_AUTHOR " = \"%s\"\n", proj->author);
     }
-    if (proj->description) {
+    if (proj->description && proj->description[0] != '\0') {
         fprintf(f, KEY_DESCRIPTION " = \"%s\"\n", proj->description);
     }
     
+    // Обязательные поля с fallback значениями
     fprintf(f, KEY_ENTRY " = \"%s\"\n", 
             proj->entry_point ? proj->entry_point : DEFAULT_ENTRY_POINT);
     
-    if (proj->output) {
+    // Остальные опциональные поля
+    if (proj->output && proj->output[0] != '\0') {
         fprintf(f, KEY_OUTPUT " = \"%s\"\n", proj->output);
     }
-    if (proj->icon) {
+    if (proj->icon && proj->icon[0] != '\0') {
         fprintf(f, KEY_ICON " = \"%s\"\n", proj->icon);
     }
     
     fprintf(f, KEY_TARGET " = \"%s\"\n", 
             proj->target ? proj->target : DEFAULT_TARGET);
     
+    // Булевые поля
     fprintf(f, KEY_DEBUG " = %s\n", 
             proj->debug ? DEFAULT_TRUE_VALUE : DEFAULT_FALSE_VALUE);
     fprintf(f, KEY_OPTIMIZE " = %s\n", 
@@ -373,14 +443,18 @@ bool project_save(HcsProject* proj, const char* path) {
     if (proj->file_count > 0) {
         fprintf(f, "\n" SECTION_FILES_HEADER "\n");
         for (int i = 0; i < proj->file_count; i++) {
-            fprintf(f, "%s\n", proj->files[i]);
+            if (proj->files[i]) {
+                fprintf(f, "%s\n", proj->files[i]);
+            }
         }
     }
     
     if (proj->include_dir_count > 0) {
         fprintf(f, "\n" SECTION_INCLUDE_HEADER "\n");
         for (int i = 0; i < proj->include_dir_count; i++) {
-            fprintf(f, "%s\n", proj->include_dirs[i]);
+            if (proj->include_dirs[i]) {
+                fprintf(f, "%s\n", proj->include_dirs[i]);
+            }
         }
     }
     
@@ -402,37 +476,43 @@ char* project_resolve_import(HcsProject* proj, const char* import_path,
                              const char* current_file) {
     if (!import_path) return NULL;
     
+    // 1. Пробуем относительно текущего файла
     if (current_file) {
-        char* current_dir = get_directory(current_file);
+        char* current_dir = hcs_get_directory(current_file);
         char* full_path = hcs_join_path(current_dir, import_path);
         free(current_dir);
         
-        if (full_path && file_exists(full_path)) {
+        if (full_path && hcs_file_exists(full_path)) {
             return full_path;
         }
         free(full_path);
     }
     
+    // 2. Пробуем относительно директории проекта
     if (proj && proj->project_dir) {
         char* full_path = hcs_join_path(proj->project_dir, import_path);
-        if (full_path && file_exists(full_path)) {
+        if (full_path && hcs_file_exists(full_path)) {
             return full_path;
         }
         free(full_path);
         
+        // 3. Пробуем в include директориях
         for (int i = 0; i < proj->include_dir_count; i++) {
+            if (!proj->include_dirs[i]) continue;
+            
             char* inc_dir = hcs_join_path(proj->project_dir, proj->include_dirs[i]);
             full_path = hcs_join_path(inc_dir, import_path);
             free(inc_dir);
             
-            if (full_path && file_exists(full_path)) {
+            if (full_path && hcs_file_exists(full_path)) {
                 return full_path;
             }
             free(full_path);
         }
     }
     
-    if (file_exists(import_path)) {
+    // 4. Пробуем как абсолютный путь
+    if (hcs_file_exists(import_path)) {
         return hcs_strdup(import_path);
     }
     
