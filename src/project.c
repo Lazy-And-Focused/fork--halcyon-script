@@ -140,54 +140,39 @@ static ParserSection parse_section_header(const char* line) {
 }
 
 static bool parse_key_value(HcsProject* proj, const char* key, char* value) {
-    if (!key || !value) return false;
+    if (!key || !value || !proj) return false;
     
-    if (strcmp(key, KEY_NAME) == 0) {
-        free(proj->name);
-        proj->name = str_dup(value);
-        return proj->name != NULL;
+    typedef struct {
+        const char* key;
+        char** field;
+        bool required;
+    } FieldMapping;
+    
+    static const FieldMapping mappings[] = {
+        {KEY_NAME, &proj->name, true},
+        {KEY_VERSION, &proj->version, true},
+        {KEY_AUTHOR, &proj->author, false},
+        {KEY_DESCRIPTION, &proj->description, false},
+        {KEY_ENTRY, &proj->entry_point, true},
+        {KEY_OUTPUT, &proj->output, false},
+        {KEY_ICON, &proj->icon, false},
+        {KEY_TARGET, &proj->target, true},
+    };
+    
+    for (size_t i = 0; i < sizeof(mappings) / sizeof(mappings[0]); i++) {
+        if (strcmp(key, mappings[i].key) == 0) {
+            free(*mappings[i].field);
+            *mappings[i].field = hcs_strdup(value);
+            return !mappings[i].required || (*mappings[i].field != NULL);
+        }
     }
-    if (strcmp(key, KEY_VERSION) == 0) {
-        free(proj->version);
-        proj->version = str_dup(value);
-        return proj->version != NULL;
-    }
-    if (strcmp(key, KEY_AUTHOR) == 0) {
-        free(proj->author);
-        proj->author = str_dup(value);
-        return true;
-    }
-    if (strcmp(key, KEY_DESCRIPTION) == 0) {
-        free(proj->description);
-        proj->description = str_dup(value);
-        return true;
-    }
-    if (strcmp(key, KEY_ENTRY) == 0) {
-        free(proj->entry_point);
-        proj->entry_point = str_dup(value);
-        return proj->entry_point != NULL;
-    }
-    if (strcmp(key, KEY_OUTPUT) == 0) {
-        free(proj->output);
-        proj->output = str_dup(value);
-        return true;
-    }
-    if (strcmp(key, KEY_ICON) == 0) {
-        free(proj->icon);
-        proj->icon = str_dup(value);
-        return true;
-    }
-    if (strcmp(key, KEY_TARGET) == 0) {
-        free(proj->target);
-        proj->target = str_dup(value);
-        return proj->target != NULL;
-    }
+    
     if (strcmp(key, KEY_DEBUG) == 0) {
-        proj->debug = string_to_bool(value);
+        proj->debug = hcs_string_to_bool(value);
         return true;
     }
     if (strcmp(key, KEY_OPTIMIZE) == 0) {
-        proj->optimize = string_to_bool(value);
+        proj->optimize = hcs_string_to_bool(value);
         return true;
     }
     
